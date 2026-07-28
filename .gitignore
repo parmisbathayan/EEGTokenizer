@@ -1,0 +1,26 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# Local paper copies and scratch material
+*.pdf
+tmp/
+
+# Data, checkpoints, caches, and outputs
+data/
+results/
+cache/
+checkpoints/
+*.mat
+*.pickle
+*.pkl
+*.pt
+*.pth
+*.ckpt
+*.npz
+
+# Notebook-generated upstream checkout
+third_party/
+

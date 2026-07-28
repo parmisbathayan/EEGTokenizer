@@ -1,0 +1,6 @@
+# Colab already supplies torch, numpy, scipy, pandas, scikit-learn, and h5py.
+# These are the tokenizer-only additions needed by the official TFM model.
+einops==0.8.0
+linear-attention-transformer==0.19.1
+timm==1.0.14
+
