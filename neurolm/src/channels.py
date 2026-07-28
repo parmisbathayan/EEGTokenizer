@@ -27,6 +27,8 @@ ZUCO_EXCLUDED_EGI = frozenset(
     (1, 8, 14, 17, 21, 25, 32, 48, 49, 56, 63, 68, 73, 81, 88, 94, 99,
      107, 113, 119, 125, 126, 127, 128)
 )
+MAX_MAPPING_DISTANCE_DEG = 30.0
+MIN_MAPPED_CHANNELS = 80
 
 
 def zuco_signal_channel_names():
@@ -93,3 +95,36 @@ def build_mne_spatial_mapping():
     source = mne.channels.make_standard_montage("GSN-HydroCel-128").get_positions()["ch_pos"]
     target = mne.channels.make_standard_montage("standard_1005").get_positions()["ch_pos"]
     return build_spatial_mapping(source, target)
+
+
+def select_usable_mapping(
+    mapping,
+    max_distance_deg=MAX_MAPPING_DISTANCE_DEG,
+    min_channels=MIN_MAPPED_CHANNELS,
+):
+    """Keep spatially credible assignments and mark rejected rows for audit."""
+
+    required = {
+        "zuco_index",
+        "zuco_channel",
+        "neurolm_channel",
+        "neurolm_index",
+        "angular_distance_deg",
+    }
+    missing = required - set(mapping.columns)
+    if missing:
+        raise ValueError(f"mapping is missing columns: {sorted(missing)}")
+    audited = mapping.copy()
+    audited["use_for_encoder"] = (
+        np.isfinite(audited["angular_distance_deg"])
+        & (audited["angular_distance_deg"] <= max_distance_deg)
+    )
+    used = audited[audited["use_for_encoder"]].copy().reset_index(drop=True)
+    if len(used) < min_channels:
+        raise RuntimeError(
+            f"only {len(used)} channels satisfy the {max_distance_deg:g}° mapping limit; "
+            f"minimum is {min_channels}"
+        )
+    if used["zuco_index"].duplicated().any() or used["neurolm_index"].duplicated().any():
+        raise ValueError("usable mapping must remain one-to-one")
+    return audited, used

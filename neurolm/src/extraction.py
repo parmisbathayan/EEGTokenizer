@@ -13,11 +13,12 @@ from .preprocess import preprocess_eeg
 from .zuco_io import iter_zuco_recordings
 
 
-def _config_hash(preprocess_config, feature_version, channel_ids):
+def _config_hash(preprocess_config, feature_version, channel_ids, zuco_indices):
     payload = {
         "preprocessing": preprocess_config.to_dict(),
         "feature_version": feature_version,
         "channel_ids": [int(value) for value in channel_ids],
+        "zuco_indices": [int(value) for value in zuco_indices],
     }
     encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
@@ -40,7 +41,10 @@ def extract_feature_cache(
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     signature = _config_hash(
-        preprocess_config, encoder.feature_version, encoder.channel_ids
+        preprocess_config,
+        encoder.feature_version,
+        encoder.channel_ids,
+        encoder.zuco_indices,
     )
     report = {"written": 0, "reused": 0, "failed": 0, "failures": []}
     started = time.perf_counter()
@@ -86,6 +90,7 @@ def extract_feature_cache(
                     subject=np.asarray(recording.subject),
                     sentence_id=np.int64(recording.sentence_id),
                     label=np.int64(recording.label),
+                    channels=np.int64(details["channels"]),
                     seconds=np.int64(details["seconds"]),
                     patches=np.int64(details["patches"]),
                     feature_norm=np.float32(details["feature_norm"]),
@@ -120,6 +125,7 @@ def extract_feature_cache(
         "preprocessing": preprocess_config.to_dict(),
         "feature_version": encoder.feature_version,
         "channel_ids": [int(value) for value in encoder.channel_ids],
+        "zuco_indices": [int(value) for value in encoder.zuco_indices],
         "checkpoint_path": encoder.checkpoint_path,
         "upstream_repo_dir": encoder.repo_dir,
         "checkpoint_load": encoder.load_report,

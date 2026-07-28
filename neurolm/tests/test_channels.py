@@ -2,7 +2,12 @@ import unittest
 
 import numpy as np
 
-from src.channels import NEUROLM_CHANNELS, build_spatial_mapping, zuco_signal_channel_names
+from src.channels import (
+    NEUROLM_CHANNELS,
+    build_spatial_mapping,
+    select_usable_mapping,
+    zuco_signal_channel_names,
+)
 
 
 class ChannelMappingTests(unittest.TestCase):
@@ -30,6 +35,22 @@ class ChannelMappingTests(unittest.TestCase):
         self.assertEqual(mapping.zuco_channel.tolist(), list(sources))
         self.assertEqual(mapping.neurolm_index.nunique(), 104)
         self.assertLess(mapping.angular_distance_deg.max(), 1e-5)
+
+    def test_distance_filter_preserves_audit_rows(self):
+        import pandas as pd
+
+        mapping = pd.DataFrame(
+            {
+                "zuco_index": [0, 1, 2],
+                "zuco_channel": ["E2", "E3", "E4"],
+                "neurolm_channel": ["FP1", "FPZ", "FP2"],
+                "neurolm_index": [0, 1, 2],
+                "angular_distance_deg": [4.0, 29.9, 32.6],
+            }
+        )
+        audited, used = select_usable_mapping(mapping, max_distance_deg=30, min_channels=2)
+        self.assertEqual(audited.use_for_encoder.tolist(), [True, True, False])
+        self.assertEqual(used.zuco_index.tolist(), [0, 1])
 
 
 if __name__ == "__main__":

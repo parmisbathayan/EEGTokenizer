@@ -18,7 +18,8 @@ class FeatureAggregationTests(unittest.TestCase):
                     folder / "sentence_0007.npz",
                     feature=np.full(6, value, dtype=np.float16),
                     subject=np.asarray(subject), sentence_id=np.int64(7),
-                    label=np.int64(1), seconds=np.int64(2), patches=np.int64(208),
+                    label=np.int64(1), channels=np.int64(104),
+                    seconds=np.int64(2), patches=np.int64(208),
                 )
             X, y, metadata, diagnostics = build_sentence_features(root)
             np.testing.assert_allclose(X, 2.0)

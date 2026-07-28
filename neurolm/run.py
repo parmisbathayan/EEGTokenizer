@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from src.channels import build_mne_spatial_mapping
+from src.channels import build_mne_spatial_mapping, select_usable_mapping
 from src.config import EvaluationConfig, PreprocessConfig
 from src.evaluation import (
     bootstrap_alignment_delta,
@@ -45,11 +45,12 @@ def main():
         print(json.dumps(inspect_zuco(args.raw_dir, args.labels_csv), indent=2))
         return
     if args.command == "extract":
-        mapping = build_mne_spatial_mapping()
+        _, mapping = select_usable_mapping(build_mne_spatial_mapping())
         encoder = OfficialNeuroLMEncoder(
             args.neurolm_repo,
             args.checkpoint,
             mapping["neurolm_index"].to_numpy(),
+            mapping["zuco_index"].to_numpy(),
             device=args.device,
         )
         manifest = extract_feature_cache(

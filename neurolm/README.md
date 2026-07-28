@@ -26,7 +26,8 @@ ZuCo sentence EEG (105 channels, 500 Hz)
   -> remove flat Cz reference channel
   -> 0.1-75 Hz, 50 Hz notch, resample to 200 Hz
   -> divide into non-overlapping one-second patches
-  -> map 104 EGI sensors one-to-one to nearest NeuroLM-supported positions
+  -> map EGI sensors one-to-one to nearest NeuroLM-supported positions
+  -> exclude assignments farther than 30 degrees (require at least 80 channels)
   -> official frozen NeuroLM-B neural encoder
   -> fixed mean + standard deviation + temporal-slope pooling per reader
   -> equal reader averaging per sentence
@@ -92,6 +93,7 @@ MyDrive/Thesis/
 
 ZuCo uses an EGI high-density montage that NeuroLM did not name directly. The
 code uses MNE's bundled sensor coordinates and a one-to-one minimum-cost spatial
-assignment to NeuroLM-supported positions. `spatial_mapping.csv` records every
-assignment and angular distance. This is a principled approximation, not exact
-montage compatibility; a failure can reflect domain or montage mismatch.
+assignment to NeuroLM-supported positions. Assignments beyond 30 degrees remain
+in `spatial_mapping.csv` for audit but are excluded from encoder input; at least
+80 channels must remain. This is a principled approximation, not exact montage
+compatibility, so a failure can still reflect domain or montage mismatch.

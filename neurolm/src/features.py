@@ -40,6 +40,7 @@ def build_sentence_features(cache_dir):
             sentence_id = int(cached["sentence_id"])
             label = int(cached["label"])
             subject = str(cached["subject"])
+            channels = int(cached["channels"])
             seconds = int(cached["seconds"])
             patches = int(cached["patches"])
         if feature.ndim != 1 or not feature.size or not np.isfinite(feature).all():
@@ -57,6 +58,7 @@ def build_sentence_features(cache_dir):
                 "subject": subject,
                 "sentence_id": sentence_id,
                 "label": label,
+                "channels": channels,
                 "seconds": seconds,
                 "patches": patches,
                 "feature_norm": float(np.linalg.norm(feature)),

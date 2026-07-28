@@ -36,6 +36,7 @@ class OfficialNeuroLMEncoder:
         repo_dir,
         checkpoint_path,
         channel_ids,
+        zuco_indices=None,
         device="cuda",
         config=EncoderConfig(),
     ):
@@ -46,8 +47,19 @@ class OfficialNeuroLMEncoder:
         self.device = torch.device(device)
         self.config = config
         self.channel_ids = np.asarray(channel_ids, dtype=np.int64)
-        if self.channel_ids.shape != (104,):
-            raise ValueError(f"expected 104 channel IDs, got {self.channel_ids.shape}")
+        if self.channel_ids.ndim != 1 or not len(self.channel_ids):
+            raise ValueError(f"expected a non-empty channel-ID vector, got {self.channel_ids.shape}")
+        if zuco_indices is None:
+            if len(self.channel_ids) != 104:
+                raise ValueError("zuco_indices are required when fewer than 104 channels are used")
+            zuco_indices = np.arange(104)
+        self.zuco_indices = np.asarray(zuco_indices, dtype=np.int64)
+        if self.zuco_indices.shape != self.channel_ids.shape:
+            raise ValueError("zuco_indices and channel_ids must have equal shape")
+        if len(np.unique(self.zuco_indices)) != len(self.zuco_indices):
+            raise ValueError("zuco_indices must be unique")
+        if self.zuco_indices.min() < 0 or self.zuco_indices.max() >= 104:
+            raise ValueError("zuco_indices must lie inside [0, 104)")
         if self.channel_ids.min() < 0 or self.channel_ids.max() >= 256:
             raise ValueError("channel IDs must fit NeuroLM's 256-entry position table")
         if self.repo_dir not in sys.path:
@@ -155,26 +167,29 @@ class OfficialNeuroLMEncoder:
         eeg = np.asarray(eeg, dtype=np.float32)
         if eeg.ndim != 2 or eeg.shape[0] != 104:
             raise ValueError(f"expected 104 x time EEG, got {eeg.shape}")
+        eeg = eeg[self.zuco_indices]
+        n_channels = len(self.channel_ids)
         seconds = eeg.shape[1] // self.config.patch_samples
         if seconds < 1:
             raise ValueError("recording has no complete one-second patch")
         eeg = eeg[:, : seconds * self.config.patch_samples]
-        max_seconds = self.config.block_size // eeg.shape[0]
+        max_seconds = self.config.block_size // n_channels
         chunks = []
         for start in range(0, seconds, max_seconds):
             stop = min(start + max_seconds, seconds)
             window = eeg[:, start * self.config.patch_samples : stop * self.config.patch_samples]
-            patches = window.reshape(104, stop - start, self.config.patch_samples)
+            patches = window.reshape(n_channels, stop - start, self.config.patch_samples)
             patches = patches.transpose(1, 0, 2).reshape(-1, self.config.patch_samples)
             channel_ids = np.tile(self.channel_ids, stop - start)
-            time_ids = np.repeat(np.arange(stop - start, dtype=np.int32), 104)
+            time_ids = np.repeat(np.arange(stop - start, dtype=np.int32), n_channels)
             encoded = self._encode_block(patches, channel_ids, time_ids)
-            chunks.append(encoded.reshape(stop - start, 104, -1))
+            chunks.append(encoded.reshape(stop - start, n_channels, -1))
         embeddings = np.concatenate(chunks, axis=0)
         feature = self.pool_embeddings(embeddings)
         return feature, {
             "seconds": int(seconds),
-            "patches": int(seconds * 104),
+            "channels": int(n_channels),
+            "patches": int(seconds * n_channels),
             "embedding_dim": int(embeddings.shape[-1]),
             "feature_dim": int(feature.size),
             "feature_norm": float(np.linalg.norm(feature)),

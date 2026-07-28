@@ -91,7 +91,7 @@ has been recorded.
 | NeuroLM source | Official NeuroLM-B neural encoder | Same frozen encoder |
 | Text or GPT-2 | None | None |
 | Encoder parameters updated | None | None |
-| Reader input | Full 104-channel sentence EEG | Cached channel/time encoder sequence |
+| Reader input | Spatially accepted subset of the 104 signal channels | Cached channel/time encoder sequence |
 | Temporal structure | Fixed embedding slope plus global moments | Learned compact temporal/channel aggregation |
 | Reader handling | Encode separately, then equal average | Separate training rows; average held-out probabilities |
 | Trainable model | Standardized logistic regression | Small probe, size to be locked before implementation |
@@ -100,3 +100,23 @@ has been recorded.
 | Shuffled macro-F1 | Pending | Not run |
 | Aligned minus shuffled | Pending | Not run |
 | Decision | Apply locked gate | Do not prepare unless V1 passes |
+
+## 2026-07-29 — Exclude spatial outliers instead of aborting
+
+The first Colab spatial audit produced 104 unique assignments with mean angular
+distance `15.9467°` and maximum distance `32.6626°`. The original hard check
+aborted because one or more assignments exceeded the conservative `30°` limit.
+This was a mapping-policy failure, not a NeuroLM or EEG-data failure.
+
+The code now preserves the locked `30°` credibility limit instead of relaxing
+it. All 104 assignments remain in `spatial_mapping.csv`, with a
+`use_for_encoder` column. Assignments beyond the limit are excluded from the EEG
+encoder, while every retained assignment remains one-to-one. The run aborts only
+if fewer than 80 credible channels remain. The exact retained count, excluded
+channels, and used-distance statistics are saved in
+`spatial_mapping_diagnostics.json`.
+
+The encoder and cache signature now record both NeuroLM channel IDs and the
+selected original ZuCo indices. This prevents features generated under a
+different channel subset from being silently reused. No checkpoint had been
+loaded and no feature extraction had begun before this change.
