@@ -1,6 +1,7 @@
 """Frozen-codebook token-map classifier for the bounded TFM V2 experiment."""
 
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 import copy
 import hashlib
@@ -61,63 +62,62 @@ def _string_value(value):
     return str(value.item() if value.ndim == 0 else value.reshape(-1)[0])
 
 
-def load_token_records(cache_dir, config=TokenMapConfig()):
-    """Load the small cached token arrays once so epochs do not reread Drive."""
+def _read_token_record(path, config):
+    path = Path(path)
+    with np.load(path, allow_pickle=False) as cached:
+        # Keep the cached representation compact in host RAM. Token IDs are
+        # converted to torch.long one minibatch at a time by the collator.
+        tokens = np.asarray(cached["tokens"], dtype=np.uint16)
+        subject = _string_value(cached["subject"])
+        sentence_id = int(cached["sentence_id"])
+        label = int(cached["label"])
+        preprocess_hash = (
+            _string_value(cached["preprocess_hash"])
+            if "preprocess_hash" in cached
+            else "missing"
+        )
+    if tokens.ndim != 2 or tokens.shape[0] != config.expected_channels:
+        raise ValueError(
+            f"invalid token shape {tokens.shape} in {path}; expected "
+            f"{config.expected_channels} x time"
+        )
+    if tokens.shape[1] < 1:
+        raise ValueError(f"empty token time axis in {path}")
+    if tokens.min() < 0 or tokens.max() >= config.codebook_size:
+        raise ValueError(f"token outside [0, {config.codebook_size}) in {path}")
+    if label not in LABEL_TO_INDEX:
+        raise ValueError(f"unexpected label {label} in {path}")
+    return TokenRecord(
+        subject=subject,
+        sentence_id=sentence_id,
+        label=label,
+        tokens=tokens,
+        preprocess_hash=preprocess_hash,
+        source_path=str(path),
+    )
 
-    paths = sorted(Path(cache_dir).glob("*/sentence_*.npz"))
-    if not paths:
-        raise FileNotFoundError(f"no token caches found below {cache_dir}")
-    records = []
+
+def _record_outputs(records):
     labels_by_sentence = {}
     shape_counts = Counter()
     preprocess_hashes = Counter()
     fingerprint = hashlib.sha256()
-    for position, path in enumerate(paths, start=1):
-        with np.load(path, allow_pickle=False) as cached:
-            # Keep the cached representation compact in host RAM. Token IDs are
-            # converted to torch.long one minibatch at a time by the collator.
-            tokens = np.asarray(cached["tokens"], dtype=np.uint16)
-            subject = _string_value(cached["subject"])
-            sentence_id = int(cached["sentence_id"])
-            label = int(cached["label"])
-            preprocess_hash = (
-                _string_value(cached["preprocess_hash"])
-                if "preprocess_hash" in cached
-                else "missing"
-            )
-        if tokens.ndim != 2 or tokens.shape[0] != config.expected_channels:
-            raise ValueError(
-                f"invalid token shape {tokens.shape} in {path}; expected "
-                f"{config.expected_channels} x time"
-            )
-        if tokens.shape[1] < 1:
-            raise ValueError(f"empty token time axis in {path}")
-        if tokens.min() < 0 or tokens.max() >= config.codebook_size:
-            raise ValueError(f"token outside [0, {config.codebook_size}) in {path}")
-        if label not in LABEL_TO_INDEX:
-            raise ValueError(f"unexpected label {label} in {path}")
-        if sentence_id in labels_by_sentence and labels_by_sentence[sentence_id] != label:
-            raise ValueError(f"conflicting labels for sentence {sentence_id}")
-        labels_by_sentence[sentence_id] = label
-        shape_counts[tuple(tokens.shape)] += 1
-        preprocess_hashes[preprocess_hash] += 1
+    for record in records:
+        if (
+            record.sentence_id in labels_by_sentence
+            and labels_by_sentence[record.sentence_id] != record.label
+        ):
+            raise ValueError(f"conflicting labels for sentence {record.sentence_id}")
+        labels_by_sentence[record.sentence_id] = record.label
+        shape_counts[tuple(record.tokens.shape)] += 1
+        preprocess_hashes[record.preprocess_hash] += 1
         fingerprint.update(
-            f"{subject}|{sentence_id}|{label}|{tokens.shape}|{preprocess_hash}\n".encode()
+            (
+                f"{record.subject}|{record.sentence_id}|{record.label}|"
+                f"{record.tokens.shape}|{record.preprocess_hash}\n"
+            ).encode()
         )
-        fingerprint.update(tokens.tobytes())
-        records.append(
-            TokenRecord(
-                subject=subject,
-                sentence_id=sentence_id,
-                label=label,
-                tokens=tokens,
-                preprocess_hash=preprocess_hash,
-                source_path=str(path),
-            )
-        )
-        if position % 500 == 0 or position == len(paths):
-            print(f"Loaded {position}/{len(paths)} token recordings", flush=True)
-
+        fingerprint.update(record.tokens.tobytes())
     sentence_counts = Counter(record.sentence_id for record in records)
     report = {
         "n_recordings": len(records),
@@ -147,6 +147,164 @@ def load_token_records(cache_dir, config=TokenMapConfig()):
             for record in records
         ]
     )
+    return metadata, report
+
+
+def _read_many_token_records(paths, config, workers, progress_prefix="Loaded"):
+    paths = list(paths)
+    records = []
+    if workers <= 1:
+        iterator = (_read_token_record(path, config) for path in paths)
+        for position, record in enumerate(iterator, start=1):
+            records.append(record)
+            if position % 100 == 0 or position == len(paths):
+                print(f"{progress_prefix} {position}/{len(paths)} recordings", flush=True)
+        return records
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        iterator = executor.map(
+            lambda path: _read_token_record(path, config),
+            paths,
+        )
+        for position, record in enumerate(iterator, start=1):
+            records.append(record)
+            if position % 100 == 0 or position == len(paths):
+                print(f"{progress_prefix} {position}/{len(paths)} recordings", flush=True)
+    return records
+
+
+def load_token_records(cache_dir, config=TokenMapConfig(), workers=1):
+    """Load individual caches; packed loading is preferred for repeated V2 runs."""
+
+    paths = sorted(Path(cache_dir).glob("*/sentence_*.npz"))
+    if not paths:
+        raise FileNotFoundError(f"no token caches found below {cache_dir}")
+    records = _read_many_token_records(paths, config, workers=workers)
+    metadata, report = _record_outputs(records)
+    return records, metadata, report
+
+
+def _pack_subject(source_paths, output_path, config, workers):
+    source_paths = sorted(map(Path, source_paths))
+    subject = source_paths[0].parent.name
+    records = _read_many_token_records(
+        source_paths,
+        config,
+        workers=workers,
+        progress_prefix=f"Packing {subject}:",
+    )
+    if {record.subject for record in records} != {subject}:
+        raise ValueError(f"source folder {subject} contains mismatched subject metadata")
+    lengths = np.asarray([record.tokens.shape[1] for record in records], dtype=np.int32)
+    sizes = lengths.astype(np.int64) * config.expected_channels
+    offsets = np.concatenate(
+        [np.zeros(1, dtype=np.int64), np.cumsum(sizes, dtype=np.int64)]
+    )
+    token_values = np.concatenate([record.tokens.reshape(-1) for record in records])
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output_path.with_suffix(".tmp.npz")
+    np.savez_compressed(
+        temporary,
+        format_version=np.int64(1),
+        source_file_count=np.int64(len(source_paths)),
+        subject=np.asarray(subject),
+        token_values=token_values.astype(np.uint16, copy=False),
+        offsets=offsets,
+        time_lengths=lengths,
+        sentence_ids=np.asarray([record.sentence_id for record in records], dtype=np.int64),
+        labels=np.asarray([record.label for record in records], dtype=np.int64),
+        preprocess_hashes=np.asarray([record.preprocess_hash for record in records]),
+    )
+    temporary.replace(output_path)
+    print(f"Saved packed subject {subject}: {output_path}", flush=True)
+
+
+def _packed_subject_is_current(path, source_file_count):
+    try:
+        with np.load(path, allow_pickle=False) as packed:
+            return int(packed["format_version"]) == 1 and int(
+                packed["source_file_count"]
+            ) == source_file_count
+    except (OSError, KeyError, ValueError):
+        return False
+
+
+def _load_packed_subject(path, config):
+    path = Path(path)
+    with np.load(path, allow_pickle=False) as packed:
+        if int(packed["format_version"]) != 1:
+            raise ValueError(f"unsupported packed token format in {path}")
+        subject = _string_value(packed["subject"])
+        token_values = np.asarray(packed["token_values"], dtype=np.uint16)
+        offsets = np.asarray(packed["offsets"], dtype=np.int64)
+        lengths = np.asarray(packed["time_lengths"], dtype=np.int64)
+        sentence_ids = np.asarray(packed["sentence_ids"], dtype=np.int64)
+        labels = np.asarray(packed["labels"], dtype=np.int64)
+        preprocess_hashes = np.asarray(packed["preprocess_hashes"]).astype(str)
+    count = len(sentence_ids)
+    if not (
+        len(lengths) == len(labels) == len(preprocess_hashes) == count
+        and len(offsets) == count + 1
+    ):
+        raise ValueError(f"inconsistent packed arrays in {path}")
+    records = []
+    for index in range(count):
+        expected_size = config.expected_channels * int(lengths[index])
+        start, stop = int(offsets[index]), int(offsets[index + 1])
+        if stop - start != expected_size:
+            raise ValueError(f"invalid packed offset for row {index} in {path}")
+        tokens = token_values[start:stop].reshape(
+            config.expected_channels, int(lengths[index])
+        )
+        records.append(
+            TokenRecord(
+                subject=subject,
+                sentence_id=int(sentence_ids[index]),
+                label=int(labels[index]),
+                tokens=tokens,
+                preprocess_hash=str(preprocess_hashes[index]),
+                source_path=str(path),
+            )
+        )
+    return records
+
+
+def load_or_pack_token_records(
+    cache_dir,
+    packed_cache_dir,
+    config=TokenMapConfig(),
+    workers=8,
+):
+    """Create resumable subject packs once, then load twelve files per runtime."""
+
+    cache_dir = Path(cache_dir)
+    packed_cache_dir = Path(packed_cache_dir)
+    subject_sources = []
+    for subject_dir in sorted(path for path in cache_dir.iterdir() if path.is_dir()):
+        paths = sorted(subject_dir.glob("sentence_*.npz"))
+        if paths:
+            subject_sources.append((subject_dir.name, paths))
+    if not subject_sources:
+        raise FileNotFoundError(f"no subject token caches found below {cache_dir}")
+    packed_cache_dir.mkdir(parents=True, exist_ok=True)
+    packed_paths = []
+    for subject, source_paths in subject_sources:
+        packed_path = packed_cache_dir / f"{subject}.npz"
+        if _packed_subject_is_current(packed_path, len(source_paths)):
+            print(f"Reusing packed subject {subject}", flush=True)
+        else:
+            _pack_subject(source_paths, packed_path, config=config, workers=workers)
+        packed_paths.append(packed_path)
+    records = []
+    for position, packed_path in enumerate(packed_paths, start=1):
+        records.extend(_load_packed_subject(packed_path, config=config))
+        print(
+            f"Loaded packed subject {position}/{len(packed_paths)}: {packed_path.stem}",
+            flush=True,
+        )
+    metadata, report = _record_outputs(records)
+    report["packed_cache_dir"] = str(packed_cache_dir)
+    report["packed_subject_files"] = len(packed_paths)
     return records, metadata, report
 
 

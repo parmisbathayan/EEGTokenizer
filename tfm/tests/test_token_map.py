@@ -9,7 +9,11 @@ class TokenCacheTests(unittest.TestCase):
         import numpy as np
         from pathlib import Path
 
-        from src.token_map import TokenMapConfig, load_token_records
+        from src.token_map import (
+            TokenMapConfig,
+            load_or_pack_token_records,
+            load_token_records,
+        )
 
         config = TokenMapConfig(
             codebook_size=16,
@@ -17,7 +21,8 @@ class TokenCacheTests(unittest.TestCase):
             expected_channels=4,
         )
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory) / "source"
+            packed = Path(directory) / "packed"
             for subject, value in (("A", 1), ("B", 2)):
                 path = root / subject / "sentence_0001.npz"
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -36,6 +41,32 @@ class TokenCacheTests(unittest.TestCase):
             self.assertEqual(report["minimum_readers_per_sentence"], 2)
             self.assertEqual(len(report["dataset_fingerprint"]), 64)
             self.assertEqual(records[0].tokens.dtype, np.uint16)
+            packed_records, packed_metadata, packed_report = load_or_pack_token_records(
+                root,
+                packed,
+                config=config,
+                workers=2,
+            )
+            self.assertEqual(len(list(packed.glob("*.npz"))), 2)
+            self.assertEqual(len(packed_records), len(records))
+            self.assertEqual(len(packed_metadata), len(metadata))
+            self.assertEqual(
+                packed_report["dataset_fingerprint"],
+                report["dataset_fingerprint"],
+            )
+            for original, reconstructed in zip(records, packed_records):
+                np.testing.assert_array_equal(original.tokens, reconstructed.tokens)
+            reused_records, _, reused_report = load_or_pack_token_records(
+                root,
+                packed,
+                config=config,
+                workers=2,
+            )
+            self.assertEqual(len(reused_records), len(records))
+            self.assertEqual(
+                reused_report["dataset_fingerprint"],
+                report["dataset_fingerprint"],
+            )
 
 
 @unittest.skipUnless(

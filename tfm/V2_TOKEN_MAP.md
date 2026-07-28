@@ -8,6 +8,12 @@ The Colab notebook reads the frozen codebook tensor directly from the official
 checkpoint. It does not instantiate the V1 tokenizer, preprocess raw EEG, rerun
 token extraction, or install the tokenizer-inference dependency set.
 
+On first use, it losslessly packs the individual V1 caches into one compressed
+file per subject using parallel reads. Completed subject packs persist in Drive,
+so interrupted packing resumes and later runtimes load roughly 12 files instead
+of 4,532. Packing changes only storage layout; token IDs, shapes, labels, and the
+dataset fingerprint remain identical.
+
 ```mermaid
 flowchart LR
     A["Cached subject/sentence token map<br/>104 channels x variable time"]

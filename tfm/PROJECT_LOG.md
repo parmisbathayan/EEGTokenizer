@@ -204,3 +204,19 @@ the dated entries above and below it.
 | Shuffled macro-F1 | 0.3401 | Pending |
 | Aligned minus shuffled | −0.0285; negative for all seeds | Pending |
 | Decision | Do not advance on V1 | Apply locked V2 gate after all folds |
+
+## 2026-07-28 — Replace thousands of Drive reads with resumable subject packs
+
+The compact-dtype fix removed the RAM excess, but the next free-Colab attempt
+remained at `codebook_loaded` because reading 4,532 individual Drive files was
+I/O-bound. Added an exact packed-cache layer under
+`CachedArtifacts/eeg_tokenizer/tfm/token_records_v2_packed`.
+
+The first run reads up to eight source files concurrently and atomically writes
+one compressed pack per subject. A disconnect loses at most the subject being
+packed; completed subject files are reused. Subsequent runtimes load about 12
+packed files. The packs use flat `uint16` token storage plus offsets and lengths,
+so variable time axes are reconstructed without padding or changed values. The
+dataset fingerprint is recomputed from the reconstructed arrays and remains
+part of the evaluation run signature. This is an execution/storage optimization
+only; the V2 model, folds, seeds, weights, controls, and gate are unchanged.
