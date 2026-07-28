@@ -73,3 +73,17 @@ first full extraction and evaluation still need to run in Colab.
 - Codebook use is not collapsed to a handful of tokens.
 - Aligned performance is evaluated against the shuffled control before any text
   fusion is attempted.
+
+## 2026-07-28 — Align paths with the existing Drive organization
+
+Inspected the actual Google Drive thesis folders and the current multimodal
+project convention. Updated the Colab notebook to use:
+
+- raw data and labels from `MyDrive/Thesis/Data`;
+- reusable token caches under
+  `MyDrive/Thesis/CachedArtifacts/eeg_tokenizer/tfm/tokens_v1`;
+- run outputs under
+  `MyDrive/Thesis/Results/eeg_tokenizer/tfm/tfm_histogram_v1`.
+
+The `eeg_tokenizer/tfm` nesting keeps TFM artifacts separate while leaving room
+for a sibling folder for the other tokenizer paper.

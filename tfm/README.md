@@ -68,21 +68,27 @@ weights, token caches, and results are ignored by `.gitignore`.
 
 ## Expected Drive layout
 
-The defaults in the notebook assume:
+The defaults follow the same `Data` / `CachedArtifacts` / `Results` separation
+used by the other thesis projects:
 
 ```text
 MyDrive/Thesis/
 ├── Data/
 │   ├── zuco_og_raw/results*_SR.mat
 │   └── zuco_sentiment_labels_task1_fixed.csv
-└── EEGTokenizer/
-    └── tfm/
-        ├── token_cache/
-        └── results/
+├── CachedArtifacts/
+│   └── eeg_tokenizer/
+│       └── tfm/
+│           └── tokens_v1/
+└── Results/
+    └── eeg_tokenizer/
+        └── tfm/
+            └── tfm_histogram_v1/
 ```
 
-Change the paths in the notebook if your Drive differs. Token extraction is
-resumable: existing subject/sentence caches are reused unless `overwrite=True`.
+The notebook creates the `eeg_tokenizer/tfm` cache and results directories when
+needed. Token extraction is resumable: existing subject/sentence caches are
+reused unless `overwrite=True`.
 
 ## Local command-line interface
 
@@ -120,4 +126,3 @@ This is a transfer test, not a reproduction of the paper's clinical benchmark
 tables. The checkpoint was trained on different devices, montages, subjects, and
 tasks. A failed transfer would be evidence about domain mismatch, not proof that
 TFM tokenization is ineffective in its original setting.
-
