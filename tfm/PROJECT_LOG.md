@@ -99,4 +99,6 @@ Replaced that import with a local implementation of the paper's declared STFT
 parameters: a 200-sample Hann window at 200 Hz, 100-sample hop, magnitude-only
 one-sided output, and `center=False`. The official tokenizer architecture and
 checkpoint are still used unchanged. Added a Colab-aware regression test for
-the expected frequency/time dimensions.
+the expected frequency/time dimensions. The notebook setup cell now also pulls
+fast-forward GitHub updates when `/content/EEGTokenizer` already exists, so a
+runtime can receive fixes without manually deleting the checkout.
