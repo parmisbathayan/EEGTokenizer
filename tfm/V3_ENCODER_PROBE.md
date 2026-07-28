@@ -1,8 +1,11 @@
 # V3 frozen-encoder probe
 
-V3 is the third and final experiment in the predefined TFM transfer sequence.
-It asks whether the official pretrained TFM encoder can recover information that
-was unavailable to the V1 histogram and the small V2 token-map classifier.
+V3 is the frozen official-encoder experiment. It asks whether the pretrained TFM
+encoder can recover information that was unavailable to the V1 histogram and the
+small V2 token-map classifier. V3 was initially treated as the final version; the
+user later clarified that the bounded plan meant three follow-ups after V1, so
+the separately locked V4 adaptation is documented in
+[`V4_ENCODER_FINETUNE.md`](V4_ENCODER_FINETUNE.md).
 
 ## End-to-end flow
 
@@ -81,10 +84,9 @@ V3 passes only if every criterion below is true:
 | Three-version-corrected paired bootstrap lower bound | Greater than 0 |
 | Mean aligned macro-F1 | Greater than majority macro-F1 |
 
-The bootstrap interval is 98.33%, reflecting the familywise 0.05 error budget
-across the three planned versions. Passing would justify treating frozen TFM
-representations as useful for this transfer setting. Failing ends this bounded
-sequence; it does not trigger a V4 or post-hoc hyperparameter search.
+The stored V3 bootstrap interval is 98.33%, reflecting the three-version count
+used when V3 was prepared. The later V4 extension uses a stricter four-version
+98.75% interval. V3's failure did not authorize tuning V3 itself.
 
 ## Interpretation boundaries
 

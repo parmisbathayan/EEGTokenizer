@@ -186,24 +186,24 @@ Keep this table updated whenever a version is prepared or completed. It is the
 canonical quick comparison; detailed implementation and result notes remain in
 the dated entries above and below it.
 
-| Component | V1: frozen histogram | V2: frozen token map | V3: frozen official encoder |
-| --- | --- | --- | --- |
-| Status | Complete — gate failed | Complete — gate failed | Complete — gate failed |
-| TFM tokenizer | Frozen | Frozen | Frozen; reuses V1 token IDs |
-| TFM codebook | Used only to produce token IDs | Frozen 8,192 × 64 embedding table | Part of the frozen official MTP encoder |
-| Classifier input | One 8,192-bin token histogram per sentence | Full 104-channel × variable-time token map per reader | One 64-value pretrained-encoder feature per sentence |
-| Temporal order | Discarded | Preserved through shared temporal convolutions | Contextualized inside each channel group by the official encoder |
-| Electrode identity | Discarded | Preserved with learned channel-position embeddings | Fixed consecutive 16-channel groups; channel-count-weighted group mean |
-| Reader handling during training | Normalized reader histograms averaged before classification | Reader recordings remain separate with equal total loss per sentence | Frozen reader features averaged before the linear probe |
-| Reader handling during testing | One already-averaged sentence feature | Reader probabilities averaged into one sentence prediction | One already-averaged sentence feature |
-| Trainable model | TF-IDF plus balanced logistic regression | Approximately 24k-parameter temporal CNN, channel attention, and linear head | Standardized, class-balanced L2 logistic regression |
-| TFM parameters updated | None | None | None |
-| Evaluation unit | Sentence | Sentence | Sentence |
-| Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
-| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds | 0.3132 ± 0.0481 across folds |
-| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds | 0.3391 ± 0.0667 across folds |
-| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds | −0.0259; negative for all seeds |
-| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 | No evidence of useful aligned signal; stop the bounded TFM sequence |
+| Component | V1: frozen histogram | V2: frozen token map | V3: frozen official encoder | V4: adapted official encoder |
+| --- | --- | --- | --- | --- |
+| Status | Complete — gate failed | Complete — gate failed | Complete — gate failed | Prepared — pending Colab run |
+| TFM tokenizer | Frozen | Frozen | Frozen; reuses V1 token IDs | Frozen; reuses V1 token IDs |
+| TFM codebook/embedding | Used only to produce token IDs | Frozen 8,192 × 64 embedding table | Part of the frozen official MTP encoder | Official encoder token embedding is initialized from MTP and trainable |
+| Classifier input | One 8,192-bin token histogram per sentence | Full 104-channel × variable-time token map per reader | One 64-value pretrained-encoder feature per sentence | Full 104-channel × variable-time token map for a sampled reader |
+| Temporal order | Discarded | Preserved through shared temporal convolutions | Contextualized inside each channel group by the official encoder | Contextualized and adapted inside each channel group by the official encoder |
+| Electrode identity | Discarded | Preserved with learned channel-position embeddings | Fixed consecutive 16-channel groups; channel-count-weighted group mean | Same fixed groups plus a trainable group-aware mixer initialized to V3 weighting |
+| Reader handling during training | Normalized reader histograms averaged before classification | Reader recordings remain separate with equal total loss per sentence | Frozen reader features averaged before the linear probe | One reader sampled per sentence per epoch; reader resampled each epoch |
+| Reader handling during testing | One already-averaged sentence feature | Reader probabilities averaged into one sentence prediction | One already-averaged sentence feature | All reader probabilities averaged into one sentence prediction |
+| Trainable model | TF-IDF plus balanced logistic regression | Approximately 24k-parameter temporal CNN, channel attention, and linear head | Standardized, class-balanced L2 logistic regression | Complete official MTP encoder plus a new three-class head |
+| TFM parameters updated | None | None | None | All official encoder parameters; tokenizer remains fixed |
+| Evaluation unit | Sentence | Sentence | Sentence | Sentence |
+| Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
+| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds | 0.3132 ± 0.0481 across folds | Pending |
+| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds | 0.3391 ± 0.0667 across folds | Pending |
+| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds | −0.0259; negative for all seeds | Pending |
+| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 | Frozen encoder did not transfer | Apply final locked gate; no V5 |
 
 ## 2026-07-28 — Replace thousands of Drive reads with resumable subject packs
 
@@ -334,3 +334,47 @@ Per the bounded plan, the TFM transfer sequence stops here without a V4 or
 post-hoc model search. This is evidence about this fixed cross-domain transfer
 setup, not a claim that TFM fails on its original clinical tasks or that no EEG
 representation can carry sentiment information.
+
+## 2026-07-29 — Clarify the bounded count and prepare final V4 adaptation
+
+After V3, the user clarified that the earlier request for “only three different
+versions to try” meant three follow-ups after the V1 baseline: V2, V3, and V4.
+V4 is therefore the explicitly final extension. This clarification is recorded
+after seeing V1–V3, rather than being retroactively described as a preregistered
+choice. Its protocol is locked here before its result; no V5 or V4 variation will
+follow a failure.
+
+V4 tests the main unresolved mechanistic alternative: perhaps the MTP-pretrained
+clinical encoder is a useful initialization but its frozen representation cannot
+express ZuCo reading sentiment. The tokenizer and discrete V1 tokens stay fixed,
+while the entire official 64x4 encoder and a new three-class head are optimized
+within each training fold. The encoder uses a conservative `1e-5` learning rate;
+the randomly initialized head uses `3e-4`.
+
+To keep full adaptation feasible on free Colab without letting subjects with more
+recordings dominate, every epoch samples exactly one reader for each training
+sentence and resamples the reader next epoch. Validation and test inference use
+every available reader and average softmax probabilities to one sentence result.
+The six 16-channel groups and eight-channel tail remain unchanged. A small
+group-aware mixer is initialized to reproduce the V3 channel-count-weighted logits
+exactly, then becomes trainable so the seven global montage regions do not remain
+exchangeable during adaptation.
+
+The shuffled control is trained from the same MTP checkpoint and random head
+initialization. It uses a no-fixed-point, one-to-one permutation of complete
+sentence recording sets separately inside fit, validation, and test partitions.
+Consequently no EEG crosses a split and no shuffled target remains paired with
+its own EEG. Outer test sentences are excluded from both gradient updates and
+early stopping.
+
+V4 retains five sentence-stratified folds and seeds 42/52/62. It writes metrics,
+predictions, and training histories atomically after each of the 30 aligned or
+shuffled setup/fold fits, so a disconnect loses only the active fit. A preliminary
+forward/backward smoke test requires finite gradients in both encoder and head.
+The run signature binds the dataset fingerprint, checkpoint SHA-256, official
+source revision, runtime package versions, and complete configuration.
+
+The five gate criteria and `+0.015` minimum effect remain unchanged. V4 changes
+the multiplicity count from three to four and therefore uses a conservative
+98.75% paired bootstrap interval (`0.05 / 4`). Pass or fail, this run closes the
+TFM transfer branch.

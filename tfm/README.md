@@ -5,10 +5,10 @@ This folder tests one narrow question across a bounded sequence of versions:
 > Do tokens from the pretrained TFM tokenizer contain sentence-level sentiment
 > information in ZuCo natural-reading EEG?
 
-It uses the authors' official tokenizer and checkpoint as a **frozen** feature
-extractor. The first classifier is intentionally only TF-IDF-weighted token
-histograms plus logistic regression. A compact model makes a positive result
-easier to interpret and a negative result cheaper to obtain.
+The official tokenizer and its discrete token IDs remain frozen throughout. The
+first three versions also freeze the relevant pretrained TFM components; the
+final V4 deliberately fine-tunes the official MTP encoder to test whether domain
+adaptation, rather than another frozen representation, is required.
 
 The upstream paper and code are:
 
@@ -48,11 +48,13 @@ classifier score is interpreted.
 
 V1 is the completed histogram baseline. V2 keeps the tokenizer and official
 codebook frozen but replaces histogramming with a small structured token-map
-classifier. V3 is the final predefined version: it passes the cached maps through
-the official frozen MTP encoder and fits a linear probe to the resulting sentence
-features. The fixed protocols are documented in
+classifier. V3 passes the cached maps through the official frozen MTP encoder and
+fits a linear probe to the resulting sentence features. V4 is the final version:
+it fine-tunes the complete MTP encoder with a new sentiment head. The fixed
+protocols are documented in
 [`V2_TOKEN_MAP.md`](V2_TOKEN_MAP.md) and
-[`V3_ENCODER_PROBE.md`](V3_ENCODER_PROBE.md).
+[`V3_ENCODER_PROBE.md`](V3_ENCODER_PROBE.md), and
+[`V4_ENCODER_FINETUNE.md`](V4_ENCODER_FINETUNE.md).
 
 ## Run in Colab
 
@@ -65,11 +67,17 @@ After V1 token extraction, open
 for the resumable frozen token-map experiment. V2 reuses `tokens_v1`; it does not
 preprocess or tokenize the raw EEG again.
 
-For the final frozen-encoder experiment, open
+For the frozen-encoder experiment, open
 [`notebooks/tfm_v3_encoder_probe_colab.ipynb`](notebooks/tfm_v3_encoder_probe_colab.ipynb).
 It also reuses `tokens_v1`, plus the packed V2 cache when available. Run its five
 code cells in order. Frozen features are saved per subject, so rerunning all cells
 after a disconnect reuses every completed subject.
+
+For the final supervised encoder-adaptation experiment, open
+[`notebooks/tfm_v4_encoder_finetune_colab.ipynb`](notebooks/tfm_v4_encoder_finetune_colab.ipynb).
+It reuses the V1 tokens and verified MTP checkpoint, trains aligned and shuffled
+models separately, and saves every completed setup/fold. It requires a GPU; after
+a disconnect, run all five code cells again to reuse completed fits.
 
 The notebook:
 
@@ -107,7 +115,8 @@ MyDrive/Thesis/
         └── tfm/
             ├── tfm_histogram_v1/
             ├── token_map_v2/
-            └── encoder_probe_v3/
+            ├── encoder_probe_v3/
+            └── encoder_finetune_v4/
 ```
 
 The notebook creates the `eeg_tokenizer/tfm` cache and results directories when
