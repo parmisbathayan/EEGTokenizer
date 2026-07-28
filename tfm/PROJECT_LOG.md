@@ -188,7 +188,7 @@ the dated entries above and below it.
 
 | Component | V1: frozen histogram | V2: frozen token map | V3: frozen official encoder |
 | --- | --- | --- | --- |
-| Status | Complete — gate failed | Complete — gate failed | Prepared — pending Colab run |
+| Status | Complete — gate failed | Complete — gate failed | Complete — gate failed |
 | TFM tokenizer | Frozen | Frozen | Frozen; reuses V1 token IDs |
 | TFM codebook | Used only to produce token IDs | Frozen 8,192 × 64 embedding table | Part of the frozen official MTP encoder |
 | Classifier input | One 8,192-bin token histogram per sentence | Full 104-channel × variable-time token map per reader | One 64-value pretrained-encoder feature per sentence |
@@ -200,10 +200,10 @@ the dated entries above and below it.
 | TFM parameters updated | None | None | None |
 | Evaluation unit | Sentence | Sentence | Sentence |
 | Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
-| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds | Pending |
-| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds | Pending |
-| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds | Pending |
-| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 | Apply locked gate; stop after V3 |
+| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds | 0.3132 ± 0.0481 across folds |
+| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds | 0.3391 ± 0.0667 across folds |
+| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds | −0.0259; negative for all seeds |
+| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 | No evidence of useful aligned signal; stop the bounded TFM sequence |
 
 ## 2026-07-28 — Replace thousands of Drive reads with resumable subject packs
 
@@ -298,3 +298,39 @@ dataset fingerprint, encoder SHA-256, and extraction configuration. The entire
 4,532 by 64 float32 feature matrix is only about 1.1 MiB, so the limiting cost is
 encoder runtime rather than retained feature memory. V3 has no automatic tuning
 follow-up; pass or fail, it concludes the bounded TFM sequence.
+
+## 2026-07-29 — V3 completed and failed the locked gate
+
+The Colab run reached `evaluation_complete` and wrote the complete result set
+under `Results/eeg_tokenizer/tfm/encoder_probe_v3`. The official encoder loaded
+57 checkpoint keys with no unexpected keys; the only missing weights were the
+intentionally excluded classification head, and all encoder parameters remained
+frozen. Frozen features were produced for 4,532 recordings, 400 sentences, and
+12 subjects. All 64 feature dimensions had nonzero variance.
+
+| Result | Aligned encoder probe | Shuffled control | Majority |
+| --- | ---: | ---: | ---: |
+| Accuracy, fold mean | 0.3150 | 0.3408 | 0.3500 |
+| Balanced accuracy, fold mean | 0.3162 | 0.3400 | 0.3333 |
+| Macro-F1, fold mean ± SD | 0.3132 ± 0.0481 | 0.3391 ± 0.0667 | 0.1728 ± 0.0000 |
+
+| Locked criterion | Required | Observed | Pass |
+| --- | ---: | ---: | :---: |
+| Aligned balanced accuracy above chance | > 0.3333 | 0.3162 | No |
+| Aligned − shuffled macro-F1 | ≥ +0.0150 | −0.0259 | No |
+| Seeds with positive aligned − shuffled delta | ≥ 2 of 3 | 0 of 3 | No |
+| Corrected 98.33% bootstrap lower bound | > 0 | −0.0702; interval [−0.0702, 0.0226] | No |
+| Aligned macro-F1 above majority | > 0.1728 | 0.3132 | Yes |
+
+The per-seed aligned-minus-shuffled macro-F1 differences were −0.0415,
+−0.0194, and −0.0169 for seeds 42, 52, and 62. Aligned V3 won 6 of 15
+fold-level comparisons and lost 9. Its macro-F1 was effectively the same as V1
+(0.3132 versus 0.3116), while its aligned accuracy was below both shuffled and
+majority performance. The frozen official representation therefore did not
+recover stable sentence-aligned sentiment information from these ZuCo tokens.
+
+All three predefined versions produced negative aligned-minus-shuffled effects.
+Per the bounded plan, the TFM transfer sequence stops here without a V4 or
+post-hoc model search. This is evidence about this fixed cross-domain transfer
+setup, not a claim that TFM fails on its original clinical tasks or that no EEG
+representation can carry sentiment information.
