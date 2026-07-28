@@ -179,3 +179,28 @@ the compact `uint16` representation in host memory and converts only the active
 minibatch to `torch.long`, reducing retained token-array RAM by 75%. Cell 4 now
 prints progress every 500 recordings and atomically writes `runtime_status.json`
 after codebook loading, token-cache loading, evaluation start, and completion.
+
+## Maintained version comparison
+
+Keep this table updated whenever a version is prepared or completed. It is the
+canonical quick comparison; detailed implementation and result notes remain in
+the dated entries above and below it.
+
+| Component | V1: frozen histogram | V2: frozen token map |
+| --- | --- | --- |
+| Status | Complete — gate failed | Prepared; Colab evaluation pending |
+| TFM tokenizer | Frozen | Frozen |
+| TFM codebook | Used only to produce token IDs | Frozen 8,192 × 64 embedding table |
+| Classifier input | One 8,192-bin token histogram per sentence | Full 104-channel × variable-time token map per reader |
+| Temporal order | Discarded | Preserved through shared temporal convolutions |
+| Electrode identity | Discarded | Preserved with learned channel-position embeddings |
+| Reader handling during training | Normalized reader histograms averaged before classification | Reader recordings remain separate with equal total loss per sentence |
+| Reader handling during testing | One already-averaged sentence feature | Reader probabilities averaged into one sentence prediction |
+| Trainable model | TF-IDF plus balanced logistic regression | Approximately 24k-parameter temporal CNN, channel attention, and linear head |
+| TFM parameters updated | None | None |
+| Evaluation unit | Sentence | Sentence |
+| Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
+| Main aligned macro-F1 | 0.3116 | Pending |
+| Shuffled macro-F1 | 0.3401 | Pending |
+| Aligned minus shuffled | −0.0285; negative for all seeds | Pending |
+| Decision | Do not advance on V1 | Apply locked V2 gate after all folds |
