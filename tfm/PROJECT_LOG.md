@@ -220,3 +220,17 @@ so variable time axes are reconstructed without padding or changed values. The
 dataset fingerprint is recomputed from the reconstructed arrays and remains
 part of the evaluation run signature. This is an execution/storage optimization
 only; the V2 model, folds, seeds, weights, controls, and gate are unchanged.
+
+## 2026-07-28 — Preserve completed V2 fits through final-summary dtype fix
+
+The first complete V2 evaluation wrote all 45 fold/setup metric rows: 30 neural
+fits and 15 majority baselines. It then stopped during the final paired
+bootstrap because prediction columns accumulated from an initially empty pandas
+frame retained `object` dtype, which the installed scikit-learn target checker
+does not accept even when every value is an integer.
+
+Metric and bootstrap inputs are now explicitly normalized to one-dimensional
+`int64` arrays. Cell 4 also reloads the project module after Cell 1 pulls GitHub,
+so a resumed runtime cannot silently keep an older imported implementation. The
+run signature is unchanged. Rerunning Cell 4 reuses all 45 saved rows and performs
+only final aggregation, bootstrap, gate evaluation, and canonical result writes.

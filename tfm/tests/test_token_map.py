@@ -11,6 +11,7 @@ class TokenCacheTests(unittest.TestCase):
 
         from src.token_map import (
             TokenMapConfig,
+            _integer_targets,
             load_or_pack_token_records,
             load_token_records,
         )
@@ -67,6 +68,59 @@ class TokenCacheTests(unittest.TestCase):
                 reused_report["dataset_fingerprint"],
                 report["dataset_fingerprint"],
             )
+            object_targets = np.asarray([-1, 0, 1], dtype=object)
+            normalized_targets = _integer_targets(object_targets)
+            self.assertEqual(normalized_targets.dtype, np.dtype(np.int64))
+            np.testing.assert_array_equal(normalized_targets, [-1, 0, 1])
+
+    def test_bootstrap_normalizes_object_dtype_targets(self):
+        import sys
+        import types
+        from unittest import mock
+
+        import numpy as np
+        import pandas as pd
+
+        from src.token_map import TokenMapConfig, _bootstrap_delta
+
+        metrics_module = types.ModuleType("sklearn.metrics")
+
+        def checked_f1(y_true, y_pred, **kwargs):
+            del kwargs
+            self.assertEqual(np.asarray(y_true).dtype, np.dtype(np.int64))
+            self.assertEqual(np.asarray(y_pred).dtype, np.dtype(np.int64))
+            return float(np.mean(np.asarray(y_true) == np.asarray(y_pred)))
+
+        metrics_module.f1_score = checked_f1
+        sklearn_module = types.ModuleType("sklearn")
+        sklearn_module.metrics = metrics_module
+        rows = []
+        for setup, predicted in (
+            ("token_map", [-1, 0, 1]),
+            ("token_map_shuffled", [0, 0, 1]),
+        ):
+            for sentence_id, (label, prediction) in enumerate(
+                zip([-1, 0, 1], predicted)
+            ):
+                rows.append(
+                    {
+                        "setup": setup,
+                        "seed": 42,
+                        "sentence_id": sentence_id,
+                        "label": label,
+                        "prediction": prediction,
+                    }
+                )
+        predictions = pd.DataFrame(rows).astype(object)
+        with mock.patch.dict(
+            sys.modules,
+            {"sklearn": sklearn_module, "sklearn.metrics": metrics_module},
+        ):
+            result = _bootstrap_delta(
+                predictions,
+                TokenMapConfig(seeds=(42,), bootstrap_samples=3),
+            )
+        self.assertEqual(result["bootstrap_samples"], 3)
 
 
 @unittest.skipUnless(

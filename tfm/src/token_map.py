@@ -731,6 +731,8 @@ def _train_one_model(
 def _metric_values(y_true, y_pred):
     from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 
+    y_true = _integer_targets(y_true)
+    y_pred = _integer_targets(y_pred)
     per_class = f1_score(
         y_true,
         y_pred,
@@ -755,6 +757,15 @@ def _metric_values(y_true, y_pred):
             for label, score in zip(LABELS, per_class)
         },
     }
+
+
+def _integer_targets(values):
+    """Return a one-dimensional integer target array accepted by sklearn."""
+
+    targets = np.asarray(values, dtype=np.int64)
+    if targets.ndim != 1:
+        raise ValueError(f"classification targets must be one-dimensional, got {targets.shape}")
+    return targets
 
 
 def _atomic_csv(frame, path):
@@ -794,9 +805,9 @@ def _bootstrap_delta(predictions, config, seed=2026):
             raise ValueError("aligned and shuffled predictions are not paired")
         paired.append(
             (
-                aligned["label"].to_numpy(),
-                aligned["prediction"].to_numpy(),
-                shuffled["prediction"].to_numpy(),
+                _integer_targets(aligned["label"].to_numpy()),
+                _integer_targets(aligned["prediction"].to_numpy()),
+                _integer_targets(shuffled["prediction"].to_numpy()),
             )
         )
     draws = []
