@@ -188,7 +188,7 @@ the dated entries above and below it.
 
 | Component | V1: frozen histogram | V2: frozen token map |
 | --- | --- | --- |
-| Status | Complete — gate failed | Prepared; Colab evaluation pending |
+| Status | Complete — gate failed | Complete — gate failed |
 | TFM tokenizer | Frozen | Frozen |
 | TFM codebook | Used only to produce token IDs | Frozen 8,192 × 64 embedding table |
 | Classifier input | One 8,192-bin token histogram per sentence | Full 104-channel × variable-time token map per reader |
@@ -200,10 +200,10 @@ the dated entries above and below it.
 | TFM parameters updated | None | None |
 | Evaluation unit | Sentence | Sentence |
 | Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
-| Main aligned macro-F1 | 0.3116 | Pending |
-| Shuffled macro-F1 | 0.3401 | Pending |
-| Aligned minus shuffled | −0.0285; negative for all seeds | Pending |
-| Decision | Do not advance on V1 | Apply locked V2 gate after all folds |
+| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds |
+| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds |
+| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds |
+| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 |
 
 ## 2026-07-28 — Replace thousands of Drive reads with resumable subject packs
 
@@ -234,3 +234,39 @@ Metric and bootstrap inputs are now explicitly normalized to one-dimensional
 so a resumed runtime cannot silently keep an older imported implementation. The
 run signature is unchanged. Rerunning Cell 4 reuses all 45 saved rows and performs
 only final aggregation, bootstrap, gate evaluation, and canonical result writes.
+
+## 2026-07-29 — V2 completed and failed the locked gate
+
+The resumed run reused every saved fold and completed the final aggregation.
+All canonical results were written under
+`Results/eeg_tokenizer/tfm/token_map_v2`. The evaluation covers 4,532 usable
+recordings, 400 sentences, and 12 subjects; each sentence has 8–12 readers.
+
+| Result | Aligned token map | Shuffled control | Majority |
+| --- | ---: | ---: | ---: |
+| Accuracy, fold mean | 0.3433 | 0.3442 | 0.3500 |
+| Balanced accuracy, fold mean | 0.3348 | 0.3385 | 0.3333 |
+| Macro-F1, fold mean ± SD | 0.2233 ± 0.0647 | 0.2549 ± 0.0463 | 0.1728 ± 0.0000 |
+
+| Locked criterion | Required | Observed | Pass |
+| --- | ---: | ---: | :---: |
+| Aligned balanced accuracy above chance | > 0.3333 | 0.3348 | Yes |
+| Aligned − shuffled macro-F1 | ≥ +0.0150 | −0.0315 | No |
+| Seeds with positive aligned − shuffled delta | ≥ 2 of 3 | 0 of 3 | No |
+| Corrected 98.33% bootstrap lower bound | > 0 | −0.0789; interval [−0.0789, 0.0032] | No |
+| Aligned macro-F1 above majority | > 0.1728 | 0.2233 | Yes |
+
+The per-seed aligned-minus-shuffled macro-F1 differences were −0.0221,
+−0.0547, and −0.0178 for seeds 42, 52, and 62. Aligned V2 won 5 of 15
+fold-level comparisons, tied 1, and lost 9. The classifier selected very early
+epochs (median best epoch 2), and its mean class F1s were 0.0843, 0.3678, and
+0.2179 for labels −1, 0, and +1, showing particularly weak recovery of the
+negative class.
+
+The tiny 0.0015 excess over the balanced-accuracy chance line is not persuasive:
+accuracy remained below the majority baseline, shuffled tokens performed better
+on average, every seed delta was negative, and the corrected interval did not
+exclude zero. V2 therefore provides no evidence that preserving frozen TFM token
+channel/time structure makes the tokens useful for this sentiment task. Per the
+predeclared stopping plan, no V2 tuning is authorized; only the predefined V3
+remains.

@@ -74,6 +74,18 @@ to the already predeclared V3 frozen-encoder probe. Changing seeds, architecture
 pooling, filtering, thresholds, or the checkpoint would define an unplanned
 experiment and is outside this version.
 
+## Completed result
+
+V2 failed the locked gate. Aligned macro-F1 was `0.2233`, compared with
+`0.2549` for the shuffled control and `0.1728` for majority. Aligned balanced
+accuracy was `0.3348`, only `0.0015` above the one-third reference. The aligned
+minus shuffled macro-F1 difference was `-0.0315`, and all three seed-level
+differences were negative. The corrected 98.33% paired-bootstrap interval was
+`[-0.0789, 0.0032]`. Only the above-chance balanced-accuracy and
+above-majority-macro-F1 criteria passed; the alignment-delta, seed-consistency,
+and corrected-interval criteria failed. The predefined decision is to proceed
+only to V3 without tuning V2.
+
 ## Resumption and outputs
 
 The evaluator writes prediction and history tables before committing each
