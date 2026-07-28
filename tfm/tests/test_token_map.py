@@ -35,6 +35,7 @@ class TokenCacheTests(unittest.TestCase):
             self.assertEqual(report["n_sentences"], 1)
             self.assertEqual(report["minimum_readers_per_sentence"], 2)
             self.assertEqual(len(report["dataset_fingerprint"]), 64)
+            self.assertEqual(records[0].tokens.dtype, np.uint16)
 
 
 @unittest.skipUnless(

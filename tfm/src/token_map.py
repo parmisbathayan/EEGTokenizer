@@ -72,9 +72,11 @@ def load_token_records(cache_dir, config=TokenMapConfig()):
     shape_counts = Counter()
     preprocess_hashes = Counter()
     fingerprint = hashlib.sha256()
-    for path in paths:
+    for position, path in enumerate(paths, start=1):
         with np.load(path, allow_pickle=False) as cached:
-            tokens = np.asarray(cached["tokens"], dtype=np.int64)
+            # Keep the cached representation compact in host RAM. Token IDs are
+            # converted to torch.long one minibatch at a time by the collator.
+            tokens = np.asarray(cached["tokens"], dtype=np.uint16)
             subject = _string_value(cached["subject"])
             sentence_id = int(cached["sentence_id"])
             label = int(cached["label"])
@@ -113,6 +115,8 @@ def load_token_records(cache_dir, config=TokenMapConfig()):
                 source_path=str(path),
             )
         )
+        if position % 500 == 0 or position == len(paths):
+            print(f"Loaded {position}/{len(paths)} token recordings", flush=True)
 
     sentence_counts = Counter(record.sentence_id for record in records)
     report = {

@@ -171,3 +171,11 @@ installs V1's inference-only packages. The remaining upstream shallow clone is
 used only to discover the authors' selected checkpoint and LFS size. All other
 cells are necessary for paths, persistent checkpoint caching, evaluation, or
 saved-result review.
+
+The first V2 Colab attempt disconnected before `run_signature.json` was written,
+so no fold had begun. The cache loader had unnecessarily promoted every stored
+`uint16` token map to `int64` while retaining all 4,532 arrays. It now preserves
+the compact `uint16` representation in host memory and converts only the active
+minibatch to `torch.long`, reducing retained token-array RAM by 75%. Cell 4 now
+prints progress every 500 recordings and atomically writes `runtime_status.json`
+after codebook loading, token-cache loading, evaluation start, and completion.
