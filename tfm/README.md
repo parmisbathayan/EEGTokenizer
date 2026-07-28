@@ -107,13 +107,22 @@ does not create a local virtual environment.
 ## Outputs
 
 Extraction writes `extraction_manifest.json` and compressed token files under one
-folder per subject. Evaluation writes:
+folder per subject. The evaluation workflow writes:
 
 - `fold_metrics.csv`
 - `oof_predictions.csv`
 - `summary.csv`
 - `evaluation_config.json`
 - `alignment_delta.json`
+
+The Colab notebook additionally preserves its diagnostics and decision record:
+
+- `sentence_metadata.csv`
+- `token_diagnostics.json`
+- `token_diagnostics_records.csv`
+- `token_diagnostics_summary.csv`
+- `token_quality_diagnostics.png`
+- `viability_gate.json`
 
 The experiment should only motivate a larger frozen-encoder or text-fusion test
 if the aligned macro-F1 is stably above shuffled EEG, with an approximate target

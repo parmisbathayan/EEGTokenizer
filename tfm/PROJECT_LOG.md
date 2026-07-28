@@ -131,3 +131,13 @@ both objects itself, so after setup and checkpoint preparation the smoke test
 can be skipped. Extraction also prints written, reused, and failed counts every
 100 recordings. Existing behavior remains resumable: each successful cache is
 written immediately and is reused on the next run.
+
+## 2026-07-28 — Persist all diagnostics and the viability decision
+
+The Colab notebook now saves the sentence metadata, recording-level token
+diagnostics, descriptive diagnostic table, aggregate diagnostic JSON, and token
+quality figure during Cell 7. Cell 8 saves the paired bootstrap result as
+`alignment_delta.json`, matching the command-line workflow. Cell 9 saves the
+thresholds, observed scores, bootstrap interval, pass/fail value, and decision
+text in `viability_gate.json`. These additions do not rerun token extraction or
+change the experiment; they complete its auditable result record.
