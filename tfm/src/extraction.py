@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+import time
 import traceback
 
 import numpy as np
@@ -29,11 +30,14 @@ def extract_token_cache(
     preprocess_config=PreprocessConfig(),
     overwrite=False,
     limit=None,
+    progress_every=100,
 ):
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     report = {"written": 0, "reused": 0, "failed": 0, "failures": []}
     config_hash = _config_hash(preprocess_config)
+    started_at = time.perf_counter()
+    processed = 0
 
     for index, recording in enumerate(iter_zuco_recordings(raw_dir, labels_csv)):
         if limit is not None and index >= limit:
@@ -41,33 +45,43 @@ def extract_token_cache(
         output = cache_path(cache_dir, recording.subject, recording.sentence_id)
         if output.exists() and not overwrite:
             report["reused"] += 1
-            continue
-        try:
-            eeg = preprocess_eeg(recording.eeg, preprocess_config)
-            tokens = tokenizer.tokenize(eeg)
-            output.parent.mkdir(parents=True, exist_ok=True)
-            temporary = output.with_suffix(".tmp.npz")
-            np.savez_compressed(
-                temporary,
-                tokens=tokens,
-                subject=np.asarray(recording.subject),
-                sentence_id=np.int64(recording.sentence_id),
-                label=np.int64(recording.label),
-                n_channels=np.int64(tokens.shape[0]),
-                n_tokens_per_channel=np.int64(tokens.shape[1]),
-                preprocess_hash=np.asarray(config_hash),
-            )
-            temporary.replace(output)
-            report["written"] += 1
-        except Exception as error:  # continue long Colab jobs while preserving evidence
-            report["failed"] += 1
-            report["failures"].append(
-                {
-                    "subject": recording.subject,
-                    "sentence_id": recording.sentence_id,
-                    "error": repr(error),
-                    "traceback": traceback.format_exc(),
-                }
+        else:
+            try:
+                eeg = preprocess_eeg(recording.eeg, preprocess_config)
+                tokens = tokenizer.tokenize(eeg)
+                output.parent.mkdir(parents=True, exist_ok=True)
+                temporary = output.with_suffix(".tmp.npz")
+                np.savez_compressed(
+                    temporary,
+                    tokens=tokens,
+                    subject=np.asarray(recording.subject),
+                    sentence_id=np.int64(recording.sentence_id),
+                    label=np.int64(recording.label),
+                    n_channels=np.int64(tokens.shape[0]),
+                    n_tokens_per_channel=np.int64(tokens.shape[1]),
+                    preprocess_hash=np.asarray(config_hash),
+                )
+                temporary.replace(output)
+                report["written"] += 1
+            except Exception as error:  # continue long Colab jobs while preserving evidence
+                report["failed"] += 1
+                report["failures"].append(
+                    {
+                        "subject": recording.subject,
+                        "sentence_id": recording.sentence_id,
+                        "error": repr(error),
+                        "traceback": traceback.format_exc(),
+                    }
+                )
+
+        processed += 1
+        if progress_every and processed % progress_every == 0:
+            elapsed_minutes = (time.perf_counter() - started_at) / 60
+            print(
+                f"Processed {processed} recordings in {elapsed_minutes:.1f} min "
+                f"(written={report['written']}, reused={report['reused']}, "
+                f"failed={report['failed']})",
+                flush=True,
             )
 
     manifest = {

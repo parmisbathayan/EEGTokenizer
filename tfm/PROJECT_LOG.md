@@ -122,3 +122,12 @@ source samples before channel removal or filtering. The inspection table now
 reports `usable_for_tfm`, `too_short`, and `unexpected_channels` separately, and
 the notebook prints label-matched, raw-array, and usable totals without conflating
 them. Added tests for both orientations and explicit short-record rejection.
+
+## 2026-07-28 — Make full extraction independent and observable
+
+The full extraction cell previously reused the tokenizer and preprocessing
+objects created by the optional one-recording smoke test. It now initializes
+both objects itself, so after setup and checkpoint preparation the smoke test
+can be skipped. Extraction also prints written, reused, and failed counts every
+100 recordings. Existing behavior remains resumable: each successful cache is
+written immediately and is reused on the next run.
