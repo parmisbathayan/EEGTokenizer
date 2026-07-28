@@ -97,3 +97,8 @@ assignment to NeuroLM-supported positions. Assignments beyond 30 degrees remain
 in `spatial_mapping.csv` for audit but are excluded from encoder input; at least
 80 channels must remain. This is a principled approximation, not exact montage
 compatibility, so a failure can still reflect domain or montage mismatch.
+
+The Colab requirements pin a current `huggingface_hub` compatible with Colab's
+`transformers`. If an older Hub module was already imported before setup, restart
+the runtime after Cell 1; the checkpoint stored in Drive will not be downloaded
+again.

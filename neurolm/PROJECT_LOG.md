@@ -120,3 +120,17 @@ The encoder and cache signature now record both NeuroLM channel IDs and the
 selected original ZuCo indices. This prevents features generated under a
 different channel subset from being silently reused. No checkpoint had been
 loaded and no feature extraction had begun before this change.
+
+## 2026-07-29 — Repair Colab Hugging Face compatibility
+
+Cell 4 successfully cached the complete official checkpoint at `2.377 GB`, then
+failed before encoder construction. The notebook had pinned
+`huggingface_hub==0.34.4`, while the current Colab `transformers` package imports
+the newer top-level `is_offline_mode` API. This was a Python-package
+compatibility error; the checkpoint and spatial mapping were unaffected.
+
+Updated the Colab-only requirement to `huggingface_hub==1.16.4` and added an
+isolated import check immediately after installation. Cell 1 now prints both Hub
+and Transformers versions and explicitly requests a runtime restart if an older
+Hub module is already resident in the kernel. The 2.377 GB Drive checkpoint is
+reused after restarting, so this fix does not repeat the large download.

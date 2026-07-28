@@ -3,4 +3,5 @@
 einops==0.8.1
 timm==1.0.19
 mne==1.10.1
-huggingface_hub==0.34.4
+# Colab's current transformers imports the top-level is_offline_mode API.
+huggingface_hub==1.16.4
