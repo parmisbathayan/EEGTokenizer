@@ -146,11 +146,9 @@ def load_token_records(cache_dir, config=TokenMapConfig()):
     return records, metadata, report
 
 
-def extract_frozen_codebook(tokenizer, config=TokenMapConfig()):
-    """Locate the pretrained VQ codebook by shape and quantizer-oriented name."""
-
+def _select_frozen_codebook(state, config, report):
     candidates = []
-    for name, tensor in tokenizer.model.state_dict().items():
+    for name, tensor in state.items():
         if tensor.ndim != 2:
             continue
         shape = tuple(tensor.shape)
@@ -170,7 +168,7 @@ def extract_frozen_codebook(tokenizer, config=TokenMapConfig()):
         candidates.append((score, name, tensor))
     if not candidates:
         raise ValueError(
-            "could not identify a 8192 x 64 codebook in the official tokenizer state"
+            "could not identify a 8192 x 64 codebook in the official checkpoint"
         )
     candidates.sort(key=lambda item: (-item[0], item[1]))
     if len(candidates) > 1 and candidates[0][0] == candidates[1][0]:
@@ -182,15 +180,50 @@ def extract_frozen_codebook(tokenizer, config=TokenMapConfig()):
         matrix = matrix.T.contiguous()
     digest = hashlib.sha256(matrix.numpy().tobytes()).hexdigest()
     report = {
+        **report,
         "state_key": name,
         "selection_score": score,
         "shape": list(matrix.shape),
         "sha256": digest,
         "candidate_keys": [candidate_name for _, candidate_name, _ in candidates],
-        "checkpoint_load": tokenizer.load_report,
-        "checkpoint_path": tokenizer.checkpoint_path,
     }
     return matrix, report
+
+
+def extract_frozen_codebook(tokenizer, config=TokenMapConfig()):
+    """Extract the codebook from an already loaded official tokenizer."""
+
+    return _select_frozen_codebook(
+        tokenizer.model.state_dict(),
+        config=config,
+        report={
+            "source": "loaded_official_tokenizer",
+            "checkpoint_load": tokenizer.load_report,
+            "checkpoint_path": tokenizer.checkpoint_path,
+        },
+    )
+
+
+def extract_frozen_codebook_from_checkpoint(checkpoint_path, config=TokenMapConfig()):
+    """Read only the frozen codebook tensor; no upstream model import is needed."""
+
+    torch = _require_torch()
+    from .official_tfm import _unwrap_state_dict
+
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    except TypeError:
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    state = _unwrap_state_dict(checkpoint)
+    return _select_frozen_codebook(
+        state,
+        config=config,
+        report={
+            "source": "checkpoint_state",
+            "checkpoint_path": str(Path(checkpoint_path).resolve()),
+            "checkpoint_state_key_count": len(state),
+        },
+    )
 
 
 def _require_torch():

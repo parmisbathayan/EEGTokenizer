@@ -42,6 +42,34 @@ class TokenCacheTests(unittest.TestCase):
     "PyTorch and NumPy are supplied by Colab",
 )
 class TokenMapTests(unittest.TestCase):
+    def test_extracts_codebook_directly_from_checkpoint(self):
+        import torch
+        from pathlib import Path
+
+        from src.token_map import (
+            TokenMapConfig,
+            extract_frozen_codebook_from_checkpoint,
+        )
+
+        config = TokenMapConfig(
+            codebook_size=16,
+            embedding_size=8,
+            expected_channels=4,
+        )
+        expected = torch.randn(16, 8)
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / "tokenizer.pt"
+            torch.save(
+                {"state_dict": {"vqvae.quantize.embedding.weight": expected}},
+                checkpoint,
+            )
+            codebook, report = extract_frozen_codebook_from_checkpoint(
+                checkpoint, config=config
+            )
+        self.assertTrue(torch.equal(codebook, expected))
+        self.assertEqual(report["state_key"], "quantize.embedding.weight")
+        self.assertEqual(report["source"], "checkpoint_state")
+
     def test_model_accepts_variable_length_masked_token_maps(self):
         import torch
 

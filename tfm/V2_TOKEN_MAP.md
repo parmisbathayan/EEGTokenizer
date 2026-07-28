@@ -4,6 +4,10 @@ V2 is the first of three predeclared follow-ups after the failed histogram
 baseline. It asks whether V1 failed because averaging token counts discarded
 temporal order and electrode identity.
 
+The Colab notebook reads the frozen codebook tensor directly from the official
+checkpoint. It does not instantiate the V1 tokenizer, preprocess raw EEG, rerun
+token extraction, or install the tokenizer-inference dependency set.
+
 ```mermaid
 flowchart LR
     A["Cached subject/sentence token map<br/>104 channels x variable time"]

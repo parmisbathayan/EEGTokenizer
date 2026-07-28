@@ -162,3 +162,12 @@ the locked multi-criterion gate with a three-version-corrected 98.33% paired
 bootstrap interval. Partial predictions and histories are written before each
 setup/fold completion marker so Colab restarts safely resume. V2 has its own
 Drive results folder and does not overwrite V1.
+
+Simplified the runnable V2 notebook to a single ordered path with five code
+cells. Removed the optional duplicate cache/codebook check and its conditional
+reuse logic. V2 now reads the codebook tensor directly from the verified
+official checkpoint, so it no longer imports the upstream tokenizer model or
+installs V1's inference-only packages. The remaining upstream shallow clone is
+used only to discover the authors' selected checkpoint and LFS size. All other
+cells are necessary for paths, persistent checkpoint caching, evaluation, or
+saved-result review.
