@@ -1,6 +1,6 @@
 # Frozen TFM tokenizer transfer to ZuCo
 
-This folder tests one narrow question:
+This folder tests one narrow question across a bounded sequence of versions:
 
 > Do tokens from the pretrained TFM tokenizer contain sentence-level sentiment
 > information in ZuCo natural-reading EEG?
@@ -46,11 +46,20 @@ The extraction also reports codebook coverage, token perplexity, and the largest
 token's share. These checks catch a tokenizer that collapses on ZuCo before a
 classifier score is interpreted.
 
+V1 is the completed histogram baseline. V2 keeps the tokenizer and official
+codebook frozen but replaces histogramming with a small structured token-map
+classifier. Its fixed protocol is documented in [`V2_TOKEN_MAP.md`](V2_TOKEN_MAP.md).
+
 ## Run in Colab
 
 Open [`notebooks/tfm_zuco_colab.ipynb`](notebooks/tfm_zuco_colab.ipynb), select a
 GPU runtime, and run from top to bottom. The only paths to edit are the three
 Google Drive locations in the configuration cell.
+
+After V1 token extraction, open
+[`notebooks/tfm_v2_token_map_colab.ipynb`](notebooks/tfm_v2_token_map_colab.ipynb)
+for the resumable frozen token-map experiment. V2 reuses `tokens_v1`; it does not
+preprocess or tokenize the raw EEG again.
 
 The notebook:
 
@@ -79,11 +88,13 @@ MyDrive/Thesis/
 ├── CachedArtifacts/
 │   └── eeg_tokenizer/
 │       └── tfm/
-│           └── tokens_v1/
+│           ├── tokens_v1/
+│           └── upstream_checkpoints/
 └── Results/
     └── eeg_tokenizer/
         └── tfm/
-            └── tfm_histogram_v1/
+            ├── tfm_histogram_v1/
+            └── token_map_v2/
 ```
 
 The notebook creates the `eeg_tokenizer/tfm` cache and results directories when

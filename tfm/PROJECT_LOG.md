@@ -141,3 +141,24 @@ quality figure during Cell 7. Cell 8 saves the paired bootstrap result as
 thresholds, observed scores, bootstrap interval, pass/fail value, and decision
 text in `viability_gate.json`. These additions do not rerun token extraction or
 change the experiment; they complete its auditable result record.
+
+## 2026-07-28 — Prepare bounded V2 frozen token-map probe
+
+V1 completed with mean aligned macro-F1 `0.3116` versus shuffled `0.3401`;
+the aligned-minus-shuffled delta was negative for all three seeds. The primary
+metrics, predictions, configuration, and token cache remain saved, so the lost
+Colab session does not justify rerunning V1.
+
+Prepared the first of three predeclared follow-ups. V2 reuses the 4,532 cached
+subject/sentence token arrays and the exact official frozen codebook. It retains
+the channel-by-time structure and trains a compact shared temporal CNN, learned
+channel positions, channel attention, and a three-class head. Reader recordings
+remain separate during training, with equal total loss per sentence, and their
+probabilities are averaged only for held-out sentence evaluation.
+
+The evaluation preserves V1's five sentence-stratified folds and seeds
+42/52/62, adds a separately trained split-local shuffled control, and applies
+the locked multi-criterion gate with a three-version-corrected 98.33% paired
+bootstrap interval. Partial predictions and histories are written before each
+setup/fold completion marker so Colab restarts safely resume. V2 has its own
+Drive results folder and does not overwrite V1.

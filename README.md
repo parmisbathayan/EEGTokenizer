@@ -8,8 +8,7 @@ results, and decisions do not get mixed together.
 
 | folder | paper | status |
 | --- | --- | --- |
-| [`tfm/`](tfm/) | *Tokenizing Single-Channel EEG with Time-Frequency Motif Learning* | ready for the first ZuCo run |
+| [`tfm/`](tfm/) | *Tokenizing Single-Channel EEG with Time-Frequency Motif Learning* | V1 complete; V2 token-map probe ready |
 
 Raw EEG, model checkpoints, token caches, and experiment outputs are deliberately
 kept outside Git. The notebooks store those artifacts in Google Drive.
-
