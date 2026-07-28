@@ -87,3 +87,16 @@ project convention. Updated the Colab notebook to use:
 
 The `eeg_tokenizer/tfm` nesting keeps TFM artifacts separate while leaving room
 for a sibling folder for the other tokenizer paper.
+
+## 2026-07-28 — Remove an unnecessary `pyhealth` inference dependency
+
+The first Colab smoke test showed that importing the upstream general-purpose
+`utils.utils` module also imported `pyhealth`, even though frozen tokenizer
+inference only needed its STFT helper. Installing `pyhealth` would add a large,
+irrelevant dependency surface.
+
+Replaced that import with a local implementation of the paper's declared STFT
+parameters: a 200-sample Hann window at 200 Hz, 100-sample hop, magnitude-only
+one-sided output, and `center=False`. The official tokenizer architecture and
+checkpoint are still used unchanged. Added a Colab-aware regression test for
+the expected frequency/time dimensions.

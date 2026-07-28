@@ -6,6 +6,37 @@ import sys
 import numpy as np
 
 
+def _tfm_stft(eeg, sampling_rate):
+    """Compute the paper's STFT without importing upstream's heavy utility module.
+
+    The official utility module also imports training/evaluation packages such as
+    ``pyhealth``. Tokenizer inference only needs this operation: a one-second
+    Hann window, 50% overlap, magnitude output, no centering, and one-sided FFT.
+    """
+
+    import torch
+
+    if eeg.ndim != 3:
+        raise ValueError(f"expected batch x channels x time EEG, got {tuple(eeg.shape)}")
+    window = torch.hann_window(
+        sampling_rate,
+        periodic=True,
+        dtype=eeg.dtype,
+        device=eeg.device,
+    )
+    return torch.stft(
+        eeg,
+        n_fft=sampling_rate,
+        hop_length=sampling_rate // 2,
+        win_length=sampling_rate,
+        window=window,
+        center=False,
+        normalized=False,
+        onesided=True,
+        return_complex=True,
+    ).abs()
+
+
 def discover_checkpoint(repo_dir):
     """Choose a tokenizer checkpoint, preferring multi-dataset pretraining."""
 
@@ -78,14 +109,12 @@ class OfficialTFMTokenizer:
             sys.path.insert(0, repo_dir)
         try:
             from models.tfm_token import get_tfm_tokenizer_2x2x8
-            from utils.utils import get_stft_torch
         except ImportError as error:
             raise ImportError(
-                "could not import the official TFM code; run the Colab setup cell first"
+                "could not import the official TFM model; verify the Colab setup dependencies"
             ) from error
 
         self.torch = torch
-        self.get_stft_torch = get_stft_torch
         self.repo_dir = repo_dir
         self.checkpoint_path = str(Path(checkpoint_path).resolve())
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
@@ -125,9 +154,7 @@ class OfficialTFMTokenizer:
                     self.device
                 )
                 batched = temporal.unsqueeze(0)
-                spectral = self.get_stft_torch(
-                    batched, resampling_rate=self.sampling_rate
-                )
+                spectral = _tfm_stft(batched, sampling_rate=self.sampling_rate)
                 spectral = spectral.reshape(-1, spectral.shape[-2], spectral.shape[-1])
                 _, tokens, _ = self.model.tokenize(spectral, temporal)
                 outputs.append(tokens.detach().cpu().to(torch.int64))
