@@ -186,24 +186,24 @@ Keep this table updated whenever a version is prepared or completed. It is the
 canonical quick comparison; detailed implementation and result notes remain in
 the dated entries above and below it.
 
-| Component | V1: frozen histogram | V2: frozen token map |
-| --- | --- | --- |
-| Status | Complete — gate failed | Complete — gate failed |
-| TFM tokenizer | Frozen | Frozen |
-| TFM codebook | Used only to produce token IDs | Frozen 8,192 × 64 embedding table |
-| Classifier input | One 8,192-bin token histogram per sentence | Full 104-channel × variable-time token map per reader |
-| Temporal order | Discarded | Preserved through shared temporal convolutions |
-| Electrode identity | Discarded | Preserved with learned channel-position embeddings |
-| Reader handling during training | Normalized reader histograms averaged before classification | Reader recordings remain separate with equal total loss per sentence |
-| Reader handling during testing | One already-averaged sentence feature | Reader probabilities averaged into one sentence prediction |
-| Trainable model | TF-IDF plus balanced logistic regression | Approximately 24k-parameter temporal CNN, channel attention, and linear head |
-| TFM parameters updated | None | None |
-| Evaluation unit | Sentence | Sentence |
-| Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
-| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds |
-| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds |
-| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds |
-| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 |
+| Component | V1: frozen histogram | V2: frozen token map | V3: frozen official encoder |
+| --- | --- | --- | --- |
+| Status | Complete — gate failed | Complete — gate failed | Prepared — pending Colab run |
+| TFM tokenizer | Frozen | Frozen | Frozen; reuses V1 token IDs |
+| TFM codebook | Used only to produce token IDs | Frozen 8,192 × 64 embedding table | Part of the frozen official MTP encoder |
+| Classifier input | One 8,192-bin token histogram per sentence | Full 104-channel × variable-time token map per reader | One 64-value pretrained-encoder feature per sentence |
+| Temporal order | Discarded | Preserved through shared temporal convolutions | Contextualized inside each channel group by the official encoder |
+| Electrode identity | Discarded | Preserved with learned channel-position embeddings | Fixed consecutive 16-channel groups; channel-count-weighted group mean |
+| Reader handling during training | Normalized reader histograms averaged before classification | Reader recordings remain separate with equal total loss per sentence | Frozen reader features averaged before the linear probe |
+| Reader handling during testing | One already-averaged sentence feature | Reader probabilities averaged into one sentence prediction | One already-averaged sentence feature |
+| Trainable model | TF-IDF plus balanced logistic regression | Approximately 24k-parameter temporal CNN, channel attention, and linear head | Standardized, class-balanced L2 logistic regression |
+| TFM parameters updated | None | None | None |
+| Evaluation unit | Sentence | Sentence | Sentence |
+| Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
+| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds | Pending |
+| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds | Pending |
+| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds | Pending |
+| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 | Apply locked gate; stop after V3 |
 
 ## 2026-07-28 — Replace thousands of Drive reads with resumable subject packs
 
@@ -270,3 +270,31 @@ exclude zero. V2 therefore provides no evidence that preserving frozen TFM token
 channel/time structure makes the tokens useful for this sentiment task. Per the
 predeclared stopping plan, no V2 tuning is authorized; only the predefined V3
 remains.
+
+## 2026-07-29 — Prepare final V3 frozen official-encoder probe
+
+Prepared the last of the three predefined TFM transfer versions. V3 reuses the
+exact V1 token maps and the compact packed-cache path added for V2. It loads the
+authors' MTP-pretrained 64x4 TFM encoder, excludes its obsolete pretraining task
+head, freezes every upstream parameter, and captures the 64-dimensional feature
+immediately before that head.
+
+A complete 104-channel ZuCo token map would exceed the official encoder's 2,048
+sequence-length limit. The fixed montage adapter therefore uses six consecutive
+16-channel groups and one eight-channel tail. All seven groups use the same
+official encoder; their outputs are averaged in proportion to channel count so
+all 104 electrodes contribute once. Reader features are then averaged within a
+sentence.
+
+Only a standardized, class-balanced L2 logistic regression is trained. Its
+regularization is selected by a three-fold inner search within each of the same
+five outer unseen-sentence folds and seeds 42/52/62. The aligned model is compared
+with a split-local shuffled feature control and a majority baseline under V2's
+unchanged five-part gate and three-version-corrected 98.33% bootstrap interval.
+
+The expensive frozen inference is resumable by subject: each completed shard is
+written atomically under `encoder_features_v3` and is validated against the token
+dataset fingerprint, encoder SHA-256, and extraction configuration. The entire
+4,532 by 64 float32 feature matrix is only about 1.1 MiB, so the limiting cost is
+encoder runtime rather than retained feature memory. V3 has no automatic tuning
+follow-up; pass or fail, it concludes the bounded TFM sequence.

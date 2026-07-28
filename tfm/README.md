@@ -48,7 +48,11 @@ classifier score is interpreted.
 
 V1 is the completed histogram baseline. V2 keeps the tokenizer and official
 codebook frozen but replaces histogramming with a small structured token-map
-classifier. Its fixed protocol is documented in [`V2_TOKEN_MAP.md`](V2_TOKEN_MAP.md).
+classifier. V3 is the final predefined version: it passes the cached maps through
+the official frozen MTP encoder and fits a linear probe to the resulting sentence
+features. The fixed protocols are documented in
+[`V2_TOKEN_MAP.md`](V2_TOKEN_MAP.md) and
+[`V3_ENCODER_PROBE.md`](V3_ENCODER_PROBE.md).
 
 ## Run in Colab
 
@@ -60,6 +64,12 @@ After V1 token extraction, open
 [`notebooks/tfm_v2_token_map_colab.ipynb`](notebooks/tfm_v2_token_map_colab.ipynb)
 for the resumable frozen token-map experiment. V2 reuses `tokens_v1`; it does not
 preprocess or tokenize the raw EEG again.
+
+For the final frozen-encoder experiment, open
+[`notebooks/tfm_v3_encoder_probe_colab.ipynb`](notebooks/tfm_v3_encoder_probe_colab.ipynb).
+It also reuses `tokens_v1`, plus the packed V2 cache when available. Run its five
+code cells in order. Frozen features are saved per subject, so rerunning all cells
+after a disconnect reuses every completed subject.
 
 The notebook:
 
@@ -90,12 +100,14 @@ MyDrive/Thesis/
 │       └── tfm/
 │           ├── tokens_v1/
 │           ├── token_records_v2_packed/
+│           ├── encoder_features_v3/
 │           └── upstream_checkpoints/
 └── Results/
     └── eeg_tokenizer/
         └── tfm/
             ├── tfm_histogram_v1/
-            └── token_map_v2/
+            ├── token_map_v2/
+            └── encoder_probe_v3/
 ```
 
 The notebook creates the `eeg_tokenizer/tfm` cache and results directories when
