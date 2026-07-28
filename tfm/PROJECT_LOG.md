@@ -45,6 +45,8 @@ other thesis codebases:
   and uses the upstream `get_stft_torch` function.
 - `src/extraction.py` writes one compressed token cache per subject/sentence and
   preserves errors in an extraction manifest instead of losing a long Colab run.
+  Cache writes are atomic, so a Colab disconnect cannot leave a partial file that
+  is mistaken for a completed recording.
 - `src/features.py` creates equal-weight subject histograms and token-collapse
   diagnostics.
 - `src/evaluation.py` performs nested stratified cross-validation with multiple
@@ -71,4 +73,3 @@ first full extraction and evaluation still need to run in Colab.
 - Codebook use is not collapsed to a handful of tokens.
 - Aligned performance is evaluated against the shuffled control before any text
   fusion is attempted.
-

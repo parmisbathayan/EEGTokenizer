@@ -1,6 +1,5 @@
 """Cached token extraction from raw ZuCo recordings."""
 
-from dataclasses import asdict
 import hashlib
 import json
 from pathlib import Path
@@ -47,8 +46,9 @@ def extract_token_cache(
             eeg = preprocess_eeg(recording.eeg, preprocess_config)
             tokens = tokenizer.tokenize(eeg)
             output.parent.mkdir(parents=True, exist_ok=True)
+            temporary = output.with_suffix(".tmp.npz")
             np.savez_compressed(
-                output,
+                temporary,
                 tokens=tokens,
                 subject=np.asarray(recording.subject),
                 sentence_id=np.int64(recording.sentence_id),
@@ -57,6 +57,7 @@ def extract_token_cache(
                 n_tokens_per_channel=np.int64(tokens.shape[1]),
                 preprocess_hash=np.asarray(config_hash),
             )
+            temporary.replace(output)
             report["written"] += 1
         except Exception as error:  # continue long Colab jobs while preserving evidence
             report["failed"] += 1
@@ -72,10 +73,14 @@ def extract_token_cache(
     manifest = {
         "preprocessing": preprocess_config.to_dict(),
         "preprocess_hash": config_hash,
+        "tokenizer": {
+            "repo_dir": getattr(tokenizer, "repo_dir", None),
+            "checkpoint_path": getattr(tokenizer, "checkpoint_path", None),
+            "codebook_size": getattr(tokenizer, "codebook_size", None),
+        },
         "checkpoint_load": getattr(tokenizer, "load_report", None),
         "report": report,
     }
     with (cache_dir / "extraction_manifest.json").open("w") as handle:
         json.dump(manifest, handle, indent=2)
     return manifest
-

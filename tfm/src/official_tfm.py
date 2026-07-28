@@ -86,6 +86,8 @@ class OfficialTFMTokenizer:
 
         self.torch = torch
         self.get_stft_torch = get_stft_torch
+        self.repo_dir = repo_dir
+        self.checkpoint_path = str(Path(checkpoint_path).resolve())
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.sampling_rate = sampling_rate
         self.codebook_size = codebook_size
@@ -94,9 +96,9 @@ class OfficialTFMTokenizer:
             emb_size=embedding_size,
         )
         try:
-            checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+            checkpoint = torch.load(self.checkpoint_path, map_location="cpu", weights_only=True)
         except TypeError:
-            checkpoint = torch.load(checkpoint_path, map_location="cpu")
+            checkpoint = torch.load(self.checkpoint_path, map_location="cpu")
         state = _unwrap_state_dict(checkpoint)
         incompatible = self.model.load_state_dict(state, strict=False)
         matched = len(self.model.state_dict()) - len(incompatible.missing_keys)
@@ -133,4 +135,3 @@ class OfficialTFMTokenizer:
         if token_ids.min(initial=0) < 0 or token_ids.max(initial=0) >= self.codebook_size:
             raise ValueError("token IDs fall outside the configured codebook")
         return token_ids.astype(np.uint16, copy=False)
-
