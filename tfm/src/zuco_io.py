@@ -26,10 +26,20 @@ def subject_from_path(path):
     return Path(path).stem
 
 
-def orient_eeg(array):
+def orient_eeg(array, expected_channels=105):
     array = np.squeeze(np.asarray(array, dtype=np.float64))
     if array.ndim != 2 or min(array.shape) < 2:
         return None
+
+    # ZuCo has a known 105-channel montage. Resolve that axis before using a
+    # generic size heuristic, because corrupt/short recordings may contain
+    # fewer than 105 time samples.
+    if array.shape[0] == expected_channels:
+        return array
+    if array.shape[1] == expected_channels:
+        array = array.T
+        return array
+
     if array.shape[0] > array.shape[1]:
         array = array.T
     if array.shape[0] > 256:
@@ -101,12 +111,19 @@ def iter_zuco_recordings(raw_dir, labels_csv, pattern="results*_SR.mat"):
             yield Recording(subject, sentence_id, label, content, raw)
 
 
-def inspect_zuco(raw_dir, labels_csv, pattern="results*_SR.mat"):
+def inspect_zuco(
+    raw_dir,
+    labels_csv,
+    pattern="results*_SR.mat",
+    expected_channels=105,
+    min_samples=500,
+):
     files = find_subject_files(raw_dir, pattern)
     lookup = label_lookup(labels_csv)
     rows = []
     for path in files:
-        matched = raw_count = total = 0
+        matched = raw_count = usable_count = total = 0
+        too_short = unexpected_channels = 0
         shapes = []
         for content, raw in iter_subject_sentences(path):
             total += 1
@@ -114,6 +131,11 @@ def inspect_zuco(raw_dir, labels_csv, pattern="results*_SR.mat"):
             if raw is not None:
                 raw_count += 1
                 shapes.append(tuple(raw.shape))
+                valid_channels = raw.shape[0] == expected_channels
+                valid_duration = raw.shape[1] >= min_samples
+                usable_count += valid_channels and valid_duration
+                too_short += not valid_duration
+                unexpected_channels += not valid_channels
         rows.append(
             {
                 "subject": subject_from_path(path),
@@ -121,10 +143,12 @@ def inspect_zuco(raw_dir, labels_csv, pattern="results*_SR.mat"):
                 "sentences": total,
                 "matched_labels": matched,
                 "with_raw_eeg": raw_count,
+                "usable_for_tfm": usable_count,
+                "too_short": too_short,
+                "unexpected_channels": unexpected_channels,
                 "channel_counts": sorted({shape[0] for shape in shapes}),
                 "min_samples": min((shape[1] for shape in shapes), default=None),
                 "max_samples": max((shape[1] for shape in shapes), default=None),
             }
         )
     return rows
-

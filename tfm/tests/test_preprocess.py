@@ -4,6 +4,7 @@ import numpy as np
 
 from src.config import PreprocessConfig
 from src.preprocess import preprocess_eeg
+from src.zuco_io import orient_eeg
 
 
 class PreprocessTests(unittest.TestCase):
@@ -20,7 +21,16 @@ class PreprocessTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "transposed"):
             preprocess_eeg(np.ones((1000, 105)), PreprocessConfig())
 
+    def test_rejects_short_recording_explicitly(self):
+        with self.assertRaisesRegex(ValueError, "too_short"):
+            preprocess_eeg(np.ones((105, 81)), PreprocessConfig())
+
+    def test_known_channel_axis_wins_over_smaller_dimension(self):
+        channels_first = orient_eeg(np.ones((105, 81)))
+        time_first = orient_eeg(np.ones((81, 105)))
+        self.assertEqual(channels_first.shape, (105, 81))
+        self.assertEqual(time_first.shape, (105, 81))
+
 
 if __name__ == "__main__":
     unittest.main()
-

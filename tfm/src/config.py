@@ -10,6 +10,8 @@ class PreprocessConfig:
 
     source_hz: int = 500
     target_hz: int = 200
+    expected_channels: int = 105
+    min_duration_seconds: float = 1.0
     bandpass_hz: Tuple[float, float] = (0.1, 75.0)
     notch_hz: Optional[float] = 50.0
     notch_quality: float = 30.0
@@ -33,4 +35,3 @@ class EvaluationConfig:
 
     def to_dict(self):
         return asdict(self)
-

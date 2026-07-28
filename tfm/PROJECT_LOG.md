@@ -108,3 +108,17 @@ The next Colab smoke test exposed a PyTorch 2.x interface constraint:
 `batch x channels x time` tensor. Updated the helper to flatten batch and channel
 into one batch axis before the STFT and restore both axes afterward. This leaves
 the per-channel transform unchanged and supports current Colab PyTorch.
+
+## 2026-07-28 — Explicitly reject truncated ZuCo recordings
+
+The initial Drive inspection displayed apparent 81- and 39-channel recordings
+for ZDN and ZJM. These were actually very short `105 x 81` and `105 x 39`
+recordings that the generic smaller-axis heuristic had transposed. At 500 Hz,
+they contain only 0.162 and 0.078 seconds and cannot form a TFM window.
+
+Updated orientation to identify the known 105-channel ZuCo axis first. Added
+explicit preprocessing requirements for 105 input channels and at least 500
+source samples before channel removal or filtering. The inspection table now
+reports `usable_for_tfm`, `too_short`, and `unexpected_channels` separately, and
+the notebook prints label-matched, raw-array, and usable totals without conflating
+them. Added tests for both orientations and explicit short-record rejection.

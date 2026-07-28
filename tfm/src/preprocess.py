@@ -34,8 +34,18 @@ def preprocess_eeg(eeg, config=PreprocessConfig()):
     eeg = np.asarray(eeg)
     if eeg.ndim != 2:
         raise ValueError(f"expected channels x time EEG, got {eeg.shape}")
-    if eeg.shape[0] > eeg.shape[1]:
-        raise ValueError(f"EEG appears transposed: {eeg.shape}")
+    if eeg.shape[0] != config.expected_channels:
+        if eeg.shape[1] == config.expected_channels:
+            raise ValueError(f"EEG appears transposed: {eeg.shape}")
+        raise ValueError(
+            f"unexpected_channels: expected {config.expected_channels}, got {eeg.shape[0]}"
+        )
+    minimum_samples = int(np.ceil(config.source_hz * config.min_duration_seconds))
+    if eeg.shape[1] < minimum_samples:
+        raise ValueError(
+            f"too_short: expected at least {minimum_samples} samples "
+            f"({config.min_duration_seconds:g}s at {config.source_hz} Hz), got {eeg.shape[1]}"
+        )
 
     drop = sorted(set(config.drop_channel_indices), reverse=True)
     for index in drop:
@@ -76,4 +86,3 @@ def preprocess_eeg(eeg, config=PreprocessConfig()):
     if not np.isfinite(eeg).all():
         raise ValueError("preprocessing produced non-finite values")
     return eeg.astype(np.float32, copy=False)
-
