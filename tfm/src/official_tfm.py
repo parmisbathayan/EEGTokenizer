@@ -18,14 +18,16 @@ def _tfm_stft(eeg, sampling_rate):
 
     if eeg.ndim != 3:
         raise ValueError(f"expected batch x channels x time EEG, got {tuple(eeg.shape)}")
+    batch_size, n_channels, n_samples = eeg.shape
+    flattened = eeg.reshape(batch_size * n_channels, n_samples)
     window = torch.hann_window(
         sampling_rate,
         periodic=True,
         dtype=eeg.dtype,
         device=eeg.device,
     )
-    return torch.stft(
-        eeg,
+    spectral = torch.stft(
+        flattened,
         n_fft=sampling_rate,
         hop_length=sampling_rate // 2,
         win_length=sampling_rate,
@@ -35,6 +37,12 @@ def _tfm_stft(eeg, sampling_rate):
         onesided=True,
         return_complex=True,
     ).abs()
+    return spectral.reshape(
+        batch_size,
+        n_channels,
+        spectral.shape[-2],
+        spectral.shape[-1],
+    )
 
 
 def discover_checkpoint(repo_dir):

@@ -102,3 +102,9 @@ checkpoint are still used unchanged. Added a Colab-aware regression test for
 the expected frequency/time dimensions. The notebook setup cell now also pulls
 fast-forward GitHub updates when `/content/EEGTokenizer` already exists, so a
 runtime can receive fixes without manually deleting the checkout.
+
+The next Colab smoke test exposed a PyTorch 2.x interface constraint:
+`torch.stft` accepted one- or two-dimensional inputs, not the three-dimensional
+`batch x channels x time` tensor. Updated the helper to flatten batch and channel
+into one batch axis before the STFT and restore both axes afterward. This leaves
+the per-channel transform unchanged and supports current Colab PyTorch.
