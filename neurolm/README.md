@@ -8,8 +8,9 @@ transfer question:
 
 This is not a reproduction of NeuroLM's six clinical and BCI benchmarks. V1 used
 no text, GPT-2 generation, or LaBSE. After V1 produced a positive but uncertain
-alignment effect, the user authorized exactly three broad follow-ups. V2 is a
-raw-EEG EEGNet diagnostic; V3 and V4 remain separate future experiments.
+alignment effect, the user authorized exactly three broad follow-ups: raw EEGNet
+(V2), structured frozen NeuroLM features (V3), and the full frozen
+NeuroLM-to-GPT-2 route with label verbalizers (V4).
 
 The upstream sources are:
 
@@ -24,9 +25,9 @@ The upstream sources are:
 | Version | Representation | Classifier | Notebook | Status |
 | --- | --- | --- | --- | --- |
 | V1 | Frozen NeuroLM-B global moments | Balanced logistic regression | [`neurolm_zuco_colab.ipynb`](notebooks/neurolm_zuco_colab.ipynb) | Complete; yellow/inconclusive |
-| V2 | Raw 104-channel one-second EEG windows | Compact EEGNet | [`neurolm_raw_eegnet_v2_colab.ipynb`](notebooks/neurolm_raw_eegnet_v2_colab.ipynb) | Prepared; pending Colab run |
-| V3 | Factorized frozen NeuroLM channel/time sequence | Small attention probe | [`neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb) | Prepared; pending Colab run |
-| V4 | Full NeuroLM-B EEG-to-GPT-2 path | Three label verbalizers | Separate future notebook | Planned only |
+| V2 | Raw 104-channel one-second EEG windows | Compact EEGNet | [`neurolm_raw_eegnet_v2_colab.ipynb`](notebooks/neurolm_raw_eegnet_v2_colab.ipynb) | Complete; yellow/suggestive |
+| V3 | Factorized frozen NeuroLM channel/time sequence | Small attention probe | [`neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb) | Complete; red |
+| V4 | Full frozen NeuroLM-B EEG-to-GPT-2 prompt state | Residual adapter + fixed label verbalizers | [`neurolm_gpt2_verbalizer_v4_colab.ipynb`](notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb) | Prepared; pending Colab run |
 
 Each version has its own notebook, Drive cache, result directory, and locked
 configuration. Earlier notebooks are not rewritten when a new version is added.
@@ -79,10 +80,13 @@ For V2, open
 [`notebooks/neurolm_raw_eegnet_v2_colab.ipynb`](notebooks/neurolm_raw_eegnet_v2_colab.ipynb).
 For V3, open
 [`notebooks/neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb).
+For V4, open
+[`notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb`](notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb).
 Select a GPU runtime and run every cell in order. Only the Drive paths in Cell 2
 may need editing. The full locked V2 protocol is documented in
-[`V2_RAW_EEGNET.md`](V2_RAW_EEGNET.md), and V3 is documented in
-[`V3_STRUCTURED_PROBE.md`](V3_STRUCTURED_PROBE.md).
+[`V2_RAW_EEGNET.md`](V2_RAW_EEGNET.md), V3 in
+[`V3_STRUCTURED_PROBE.md`](V3_STRUCTURED_PROBE.md), and V4 in
+[`V4_GPT2_VERBALIZER.md`](V4_GPT2_VERBALIZER.md).
 
 The V1 notebook performs these cloud-only downloads:
 
@@ -95,9 +99,9 @@ The V1 notebook performs these cloud-only downloads:
 Extraction is resumable. Each reader/sentence feature is atomically stored as a
 small compressed file before the next recording begins.
 
-The V2 notebook installs and downloads no additional model or Python package; it
-uses Colab's existing PyTorch and scientific stack. It creates resumable raw-EEG
-subject packs only in Google Drive.
+The V2 notebook downloads no additional model. V3 and V4 reuse the checkpoint
+already stored by V1. V4 adds only the small `tiktoken` Colab dependency and
+does not create a second model copy.
 
 ## Expected Drive layout
 
@@ -110,11 +114,13 @@ MyDrive/Thesis/
 │   ├── upstream_checkpoints/checkpoints/NeuroLM-B.pt
 │   ├── frozen_features_v1/<subject>/sentence_*.npz
 │   ├── raw_eeg_packs_v2/<subject>.npz
-│   └── structured_features_v3/<subject>.npz
+│   ├── structured_features_v3/<subject>.npz
+│   └── gpt2_prompt_features_v4/<subject>.npz
 └── Results/eeg_tokenizer/neurolm/
     ├── frozen_probe_v1/
     ├── raw_eegnet_v2/
-    └── structured_probe_v3/
+    ├── structured_probe_v3/
+    └── gpt2_verbalizer_v4/
 ```
 
 ## Important boundary

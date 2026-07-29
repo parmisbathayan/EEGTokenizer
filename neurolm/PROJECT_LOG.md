@@ -87,18 +87,18 @@ has been recorded.
 
 | Component | V1: frozen pooled NeuroLM | V2: raw EEGNet | V3: structured frozen NeuroLM | V4: NeuroLM plus GPT-2 |
 | --- | --- | --- | --- | --- |
-| Status | Complete — yellow/inconclusive | Prepared — pending Colab run | Prepared — pending Colab run | Planned only |
+| Status | Complete — yellow/inconclusive | Complete — yellow/suggestive | Complete — red | Prepared — pending Colab run |
 | Input | NeuroLM channel/time embeddings | Native raw EGI EEG | Factorized NeuroLM channel and per-second sequence | Official full NeuroLM EEG sequence plus fixed instruction |
 | NeuroLM source | Frozen NeuroLM-B neural encoder | Not used | Same frozen encoder | Full NeuroLM-B checkpoint |
 | Text | None | None | None | Identical instruction only; no stimulus sentence |
 | Temporal structure | Global mean, standard deviation and slope | Learned local temporal convolutions | Learned channel and temporal attention | GPT-2 causal attention |
 | Reader handling | Feature mean before classification | Reader rows; mean held-out probabilities | Reader rows; mean held-out probabilities | Reader rows; mean label probabilities |
-| Trainable model | Standardized logistic regression | One locked compact EEGNet | Small attention probe | Small adapters and label verbalizers |
+| Trainable model | Standardized logistic regression | One locked compact EEGNet | Small attention probe | 32-unit residual adapter and fixed GPT-2 label verbalizers |
 | Evaluation unit | Unique sentence | Unique sentence | Unique sentence | Unique sentence |
-| Aligned macro-F1 | 0.3493 | Pending | Not run | Not run |
-| Shuffled macro-F1 | 0.3179 | Pending | Not run | Not run |
-| Aligned minus shuffled | +0.0314 across folds | Pending | Not run | Not run |
-| Decision | Effect/seed criteria pass; corrected interval crosses zero | Apply new-screen stoplight gate | Apply new-screen stoplight gate | Separate future notebook; final screen |
+| Aligned macro-F1 | 0.3493 | 0.3102 | 0.2455 | Pending |
+| Shuffled macro-F1 | 0.3179 | 0.2746 | 0.2577 | Pending |
+| Aligned minus shuffled | +0.0314 across folds | +0.0356 across folds | -0.0122 across folds | Pending |
+| Decision | Yellow; corrected interval crosses zero | Yellow; corrected interval crosses zero | Red; shuffled is better | Final bounded screen |
 
 ## 2026-07-29 — Exclude spatial outliers instead of aborting
 
@@ -265,3 +265,63 @@ split, model, or gate, and the existing subject packs are reused. Cell 4 also
 explicitly reloads `src.raw_cache` so a runtime that reruns Cell 1 after pulling
 the fix does not retain the older imported module. A regression test covers the
 tuple-to-list round trip.
+
+## 2026-07-29 — V2 completed with weak, seed-unstable raw-EEG evidence
+
+V2 completed all 3 seeds × 5 folds over 4,532 reader recordings and 400 unique
+sentences. Aligned EEGNet macro-F1 was `0.3102`, compared with `0.2746` for the
+independently trained shuffled-pairing control and `0.1728` for majority. The
+fold-mean aligned advantage was `+0.0356`, but seed-level OOF deltas were
+`-0.0286`, `+0.0369`, and `+0.0333`. The corrected 98.33% interval was
+`[-0.0332, +0.0594]`.
+
+Four of five gate criteria passed; the corrected interval did not. V2 is
+therefore yellow and remains frozen without additional seeds or tuning. The
+inference-only 50 ms temporal-block shuffle scored `0.3149` macro-F1, providing
+no evidence that the compact network relied on one-second block order.
+
+## 2026-07-29 — V3 completed red
+
+V3 aligned macro-F1 was `0.2455`, below the shuffled-pairing control at `0.2577`.
+The fold-mean aligned advantage was `-0.0122`; seed-level OOF deltas were
+`-0.0415`, `-0.0062`, and `+0.0138`, with corrected interval
+`[-0.0559, +0.0357]`. Only the above-chance balanced-accuracy and
+above-majority macro-F1 checks passed, so V3 is red and is not eligible for more
+seeds or tuning.
+
+The inference-only channel/time structure shuffle reproduced the aligned score
+almost exactly (`0.24549` versus `0.24551`). The trained probe therefore showed
+no measurable reliance on the extra spatial or temporal organization preserved
+by V3.
+
+## 2026-07-29 — Prepare V4 frozen full-NeuroLM/GPT-2 verbalizer
+
+V4 is implemented as the final predeclared broad screen in the independent
+notebook `notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb`. It reuses V2's raw
+subject packs, the existing 2.38 GB checkpoint, the accepted 102-channel
+mapping, and the pinned official source. It supplies no stimulus sentence text.
+
+The full official NeuroLM-B model, including GPT-2, remains frozen. For each
+reader recording, at most three seconds are selected deterministically to cover
+the start, middle, and end. This keeps the 102-channel EEG prefix plus the fixed
+instruction inside the 1,024-token context and bounds Colab compute. A hook at
+GPT-2's final normalization layer caches only the final fixed-prompt state
+(`768` float16 values per reader), plus the fixed GPT-2 embedding vectors for
+the single-token verbalizers ` negative`, ` neutral`, and ` positive`.
+
+Cross-validation trains only a zero-initialized residual `768 → 32 → 768`
+adapter and three biases, approximately 49k parameters. Reader probabilities
+are averaged per held-out sentence. The primary control trains an independent
+adapter after permuting whole reader bundles inside each train, validation, and
+test split. No prompt, verbalizer, architecture, optimizer, or duration search
+is authorized.
+
+The cache is resumable per subject under `gpt2_prompt_features_v4`; results are
+resumable per setup/fold under `gpt2_verbalizer_v4`. The same three-seed,
+five-fold, 98.33%-interval stoplight gate applies. Green permits only a new,
+separately locked confirmation; yellow is recorded without tuning; red ends the
+broad screen.
+
+No package, model, dataset, runtime, or environment was downloaded or installed
+on the Mac. V4's official source fetch, small `tiktoken` dependency, checkpoint
+reuse, extraction, and GPU evaluation are Colab-only.
