@@ -2,6 +2,7 @@
 
 from collections import Counter, OrderedDict
 from dataclasses import dataclass
+import gc
 import hashlib
 import json
 from pathlib import Path
@@ -119,6 +120,7 @@ class OfficialNeuroLMGPT2:
         from model.model import GPTConfig
         from model.model_neurolm import NeuroLM
 
+        print("V4 model load 1/4: opening the checkpoint from Drive...", flush=True)
         load_kwargs = {"map_location": "cpu"}
         try:
             checkpoint = torch.load(
@@ -129,6 +131,7 @@ class OfficialNeuroLMGPT2:
         if "model" not in checkpoint or "model_args" not in checkpoint:
             raise KeyError("official checkpoint must contain model and model_args")
         model_args = dict(checkpoint["model_args"])
+        print("V4 model load 2/4: constructing the full NeuroLM/GPT-2 model...", flush=True)
         self.model = NeuroLM(GPTConfig(**model_args), init_from="scratch")
         state = OrderedDict()
         for key, value in checkpoint["model"].items():
@@ -136,6 +139,7 @@ class OfficialNeuroLMGPT2:
                 if key.startswith(prefix):
                     key = key[len(prefix) :]
             state[key] = value
+        print("V4 model load 3/4: copying the official weights...", flush=True)
         incompatibility = self.model.load_state_dict(state, strict=False)
         self.load_report = {
             "selected_keys": len(state),
@@ -145,7 +149,10 @@ class OfficialNeuroLMGPT2:
         if self.load_report["missing_keys"] or self.load_report["unexpected_keys"]:
             raise RuntimeError(f"full NeuroLM-B checkpoint mismatch: {self.load_report}")
         del checkpoint, state
+        gc.collect()
+        print("V4 model load 4/4: moving the frozen model to the GPU...", flush=True)
         self.model.eval().requires_grad_(False).to(self.device)
+        print("V4 full model is ready.", flush=True)
         if not hasattr(self.model, "GPT2"):
             raise AttributeError("official NeuroLM model has no GPT2 component")
         gpt2 = self.model.GPT2
