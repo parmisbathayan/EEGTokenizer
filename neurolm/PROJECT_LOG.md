@@ -85,21 +85,20 @@ has been recorded.
 
 ## Maintained version comparison
 
-| Component | V1: frozen pooled encoder | V2: structured frozen sequence probe |
-| --- | --- | --- |
-| Status | Prepared; Colab evaluation pending | Not implemented; permitted only if V1 passes |
-| NeuroLM source | Official NeuroLM-B neural encoder | Same frozen encoder |
-| Text or GPT-2 | None | None |
-| Encoder parameters updated | None | None |
-| Reader input | Spatially accepted subset of the 104 signal channels | Cached channel/time encoder sequence |
-| Temporal structure | Fixed embedding slope plus global moments | Learned compact temporal/channel aggregation |
-| Reader handling | Encode separately, then equal average | Separate training rows; average held-out probabilities |
-| Trainable model | Standardized logistic regression | Small probe, size to be locked before implementation |
-| Evaluation unit | Unique sentence | Unique sentence |
-| Aligned macro-F1 | Pending | Not run |
-| Shuffled macro-F1 | Pending | Not run |
-| Aligned minus shuffled | Pending | Not run |
-| Decision | Apply locked gate | Do not prepare unless V1 passes |
+| Component | V1: frozen pooled NeuroLM | V2: raw EEGNet | V3: structured frozen NeuroLM | V4: NeuroLM plus GPT-2 |
+| --- | --- | --- | --- | --- |
+| Status | Complete — yellow/inconclusive | Prepared — pending Colab run | Planned only | Planned only |
+| Input | NeuroLM channel/time embeddings | Native raw EGI EEG | Unpooled NeuroLM channel/time sequence | Official full NeuroLM EEG sequence plus fixed instruction |
+| NeuroLM source | Frozen NeuroLM-B neural encoder | Not used | Same frozen encoder | Full NeuroLM-B checkpoint |
+| Text | None | None | None | Identical instruction only; no stimulus sentence |
+| Temporal structure | Global mean, standard deviation and slope | Learned local temporal convolutions | Learned channel and temporal attention | GPT-2 causal attention |
+| Reader handling | Feature mean before classification | Reader rows; mean held-out probabilities | Reader rows; mean held-out probabilities | Reader rows; mean label probabilities |
+| Trainable model | Standardized logistic regression | One locked compact EEGNet | Small attention probe | Small adapters and label verbalizers |
+| Evaluation unit | Unique sentence | Unique sentence | Unique sentence | Unique sentence |
+| Aligned macro-F1 | 0.3493 | Pending | Not run | Not run |
+| Shuffled macro-F1 | 0.3179 | Pending | Not run | Not run |
+| Aligned minus shuffled | +0.0314 across folds | Pending | Not run | Not run |
+| Decision | Effect/seed criteria pass; corrected interval crosses zero | Apply new-screen stoplight gate | Separate future notebook | Separate future notebook; final screen |
 
 ## 2026-07-29 — Exclude spatial outliers instead of aborting
 
@@ -134,3 +133,78 @@ isolated import check immediately after installation. Cell 1 now prints both Hub
 and Transformers versions and explicitly requests a runtime restart if an older
 Hub module is already resident in the kernel. The 2.377 GB Drive checkpoint is
 reused after restarting, so this fix does not repeat the large download.
+
+## 2026-07-29 — V1 completed with a positive but uncertain alignment effect
+
+The full V1 extraction and evaluation completed on 4,532 reader/sentence
+recordings covering 400 unique sentences. All 2,304 pooled feature dimensions
+were nonconstant. The retained montage contained 102 one-to-one mapped channels;
+two assignments above the locked 30-degree limit were excluded.
+
+| Result | Aligned NeuroLM | Shuffled NeuroLM | Majority |
+| --- | ---: | ---: | ---: |
+| Accuracy, fold mean | 0.3500 | 0.3208 | 0.3500 |
+| Balanced accuracy, fold mean | 0.3494 | 0.3204 | 0.3333 |
+| Macro-F1, fold mean | 0.3493 | 0.3179 | 0.1728 |
+
+The fold-mean aligned-minus-shuffled macro-F1 was `+0.0314`, exceeding the
+`+0.015` effect threshold. The OOF differences were positive for all three
+seeds: `+0.0453`, `+0.0263`, and `+0.0163`. However, the corrected 98.33% paired
+bootstrap interval was `[-0.0187, +0.0758]`, so its lower bound did not exceed
+zero. V1 therefore failed the complete locked gate and is classified as yellow:
+suggestive but not eligible for tuning.
+
+The median cosine similarity between reader-level pooled features was `0.9897`.
+That does not prove collapse because every dimension varied, but it motivates a
+future structured sequence test rather than more tuning of the same global
+pooling rule.
+
+## 2026-07-29 — Authorize a bounded three-version exploratory screen
+
+After reviewing V1, the user explicitly authorized exactly three additional
+versions that span different representations and classifiers. This supersedes
+V1's automatic stop only by adding the predeclared broad screen; it does not
+authorize tuning V1 or an open-ended search.
+
+- V2 tests native raw EEG with a compact EEGNet.
+- V3 will test unpooled frozen NeuroLM channel/time embeddings with a small
+  attention probe.
+- V4 will test the official full NeuroLM-B EEG-to-GPT-2 route using only a fixed
+  instruction and three sentiment label verbalizers.
+
+The three new versions form an exploratory screening family with a 98.33%
+per-version paired-bootstrap interval. Only a green version may later be tuned,
+and only after all three screens are complete. If none is green, the branch
+stops. Any selected winner still requires an independently locked confirmation.
+
+## 2026-07-29 — Prepare V2 raw-EEG EEGNet
+
+V2 is implemented as a new code path and a separate notebook,
+`notebooks/neurolm_raw_eegnet_v2_colab.ipynb`. The V1 notebook and V1 Drive
+directories remain unchanged.
+
+V2 reuses only the raw-data reader, fixed labels, and preprocessing. It bypasses
+NeuroLM and uses all 104 retained native EGI channels. Preprocessed float16 EEG
+is saved atomically as one packed file per subject under `raw_eeg_packs_v2`,
+avoiding thousands of repeated Google Drive reads while allowing subject-level
+resumption.
+
+The locked model is a compact EEGNet-style network with temporal convolution,
+depthwise spatial convolution across all channels, a separable temporal block,
+and a three-class head. One reader recording is a training row; its one-second
+window logits are averaged before loss calculation. Each sentence receives
+equal total training weight, and held-out reader probabilities are averaged into
+one sentence prediction. Sentence grouping occurs before readers or windows are
+expanded.
+
+The primary negative control trains an independent model after permuting whole
+reader bundles inside each train, validation, and test split. An inference-only
+50 ms temporal-block shuffle is saved as a secondary diagnostic and does not
+enter the gate. Evaluation uses the fixed three seeds, five outer folds, one
+inner validation split for early stopping, and no architecture or optimizer
+search. Partial metrics, predictions, histories, and completion markers are
+written after every setup/fold under `raw_eegnet_v2`.
+
+No package, model, dataset, cache, or environment was downloaded or installed on
+the Mac. Colab supplies every V2 runtime dependency; V2 downloads no external
+model checkpoint.

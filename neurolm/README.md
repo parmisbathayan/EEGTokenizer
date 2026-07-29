@@ -1,15 +1,15 @@
-# Frozen NeuroLM-B transfer to ZuCo
+# NeuroLM and raw-EEG transfer screens on ZuCo
 
-This folder tests one narrow EEG-only question:
+This folder contains a bounded EEG-only version series. V1 tested one narrow
+transfer question:
 
 > Do representations learned by the official pretrained NeuroLM-B neural encoder
 > contain sentence-level sentiment information in ZuCo natural-reading EEG?
 
-This is a **transfer test**, not a reproduction of NeuroLM's six clinical and BCI
-benchmarks. It deliberately does not use text, GPT-2 generation, or LaBSE. The
-large language-model component is not a sensible first test for 400 labelled
-sentences; the frozen neural encoder is the part that can fairly be assessed as
-an EEG-only representation.
+This is not a reproduction of NeuroLM's six clinical and BCI benchmarks. V1 used
+no text, GPT-2 generation, or LaBSE. After V1 produced a positive but uncertain
+alignment effect, the user authorized exactly three broad follow-ups. V2 is a
+raw-EEG EEGNet diagnostic; V3 and V4 remain separate future experiments.
 
 The upstream sources are:
 
@@ -19,7 +19,19 @@ The upstream sources are:
 - [Official implementation](https://github.com/935963004/NeuroLM)
 - [Official checkpoints](https://huggingface.co/Weibang/NeuroLM)
 
-## Experiment
+## Version series
+
+| Version | Representation | Classifier | Notebook | Status |
+| --- | --- | --- | --- | --- |
+| V1 | Frozen NeuroLM-B global moments | Balanced logistic regression | [`neurolm_zuco_colab.ipynb`](notebooks/neurolm_zuco_colab.ipynb) | Complete; yellow/inconclusive |
+| V2 | Raw 104-channel one-second EEG windows | Compact EEGNet | [`neurolm_raw_eegnet_v2_colab.ipynb`](notebooks/neurolm_raw_eegnet_v2_colab.ipynb) | Prepared; pending Colab run |
+| V3 | Structured frozen NeuroLM channel/time sequence | Small attention probe | Separate future notebook | Planned only |
+| V4 | Full NeuroLM-B EEG-to-GPT-2 path | Three label verbalizers | Separate future notebook | Planned only |
+
+Each version has its own notebook, Drive cache, result directory, and locked
+configuration. Earlier notebooks are not rewritten when a new version is added.
+
+## V1 experiment
 
 ```text
 ZuCo sentence EEG (105 channels, 500 Hz)
@@ -61,11 +73,15 @@ NeuroLM variants. A failed gate stops automatic escalation to a larger model.
 
 ## Run in Colab
 
-Open [`notebooks/neurolm_zuco_colab.ipynb`](notebooks/neurolm_zuco_colab.ipynb),
-select a GPU runtime, and run every cell in order. Only the Drive paths in Cell 2
-may need editing.
+For V1, open
+[`notebooks/neurolm_zuco_colab.ipynb`](notebooks/neurolm_zuco_colab.ipynb).
+For V2, open
+[`notebooks/neurolm_raw_eegnet_v2_colab.ipynb`](notebooks/neurolm_raw_eegnet_v2_colab.ipynb).
+Select a GPU runtime and run every cell in order. Only the Drive paths in Cell 2
+may need editing. The full locked V2 protocol is documented in
+[`V2_RAW_EEGNET.md`](V2_RAW_EEGNET.md).
 
-The notebook performs these cloud-only downloads:
+The V1 notebook performs these cloud-only downloads:
 
 | artifact | source | approximate size |
 | --- | --- | ---: |
@@ -76,6 +92,10 @@ The notebook performs these cloud-only downloads:
 Extraction is resumable. Each reader/sentence feature is atomically stored as a
 small compressed file before the next recording begins.
 
+The V2 notebook installs and downloads no additional model or Python package; it
+uses Colab's existing PyTorch and scientific stack. It creates resumable raw-EEG
+subject packs only in Google Drive.
+
 ## Expected Drive layout
 
 ```text
@@ -85,8 +105,11 @@ MyDrive/Thesis/
 │   └── zuco_sentiment_labels_task1_fixed.csv
 ├── CachedArtifacts/eeg_tokenizer/neurolm/
 │   ├── upstream_checkpoints/checkpoints/NeuroLM-B.pt
-│   └── frozen_features_v1/<subject>/sentence_*.npz
-└── Results/eeg_tokenizer/neurolm/frozen_probe_v1/
+│   ├── frozen_features_v1/<subject>/sentence_*.npz
+│   └── raw_eeg_packs_v2/<subject>.npz
+└── Results/eeg_tokenizer/neurolm/
+    ├── frozen_probe_v1/
+    └── raw_eegnet_v2/
 ```
 
 ## Important boundary
