@@ -52,6 +52,12 @@ def _string_scalar(value):
     return str(value.item() if value.ndim == 0 else value.reshape(-1)[0])
 
 
+def _json_equivalent(left, right):
+    """Compare config payloads after JSON normalizes tuples into lists."""
+
+    return json.dumps(left, sort_keys=True) == json.dumps(right, sort_keys=True)
+
+
 def _pack_is_current(path, signature, source_path=None):
     try:
         with np.load(path, allow_pickle=False) as cached:
@@ -253,7 +259,9 @@ def load_raw_records(pack_dir, preprocess_config=PreprocessConfig()):
     if not manifest_path.exists():
         raise FileNotFoundError(f"raw cache manifest is missing from {pack_dir}")
     manifest = json.loads(manifest_path.read_text())
-    if manifest.get("preprocessing") != preprocess_config.to_dict():
+    if not _json_equivalent(
+        manifest.get("preprocessing"), preprocess_config.to_dict()
+    ):
         raise ValueError("raw cache preprocessing does not match the requested configuration")
     expected_signature = str(manifest["signature"])
     records = []

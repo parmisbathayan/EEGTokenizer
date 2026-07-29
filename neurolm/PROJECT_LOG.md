@@ -250,3 +250,18 @@ interval, and no-tuning policy match V2. Results are isolated under
 
 No Mac dependency or artifact was downloaded or installed. All NeuroLM source,
 checkpoint reuse, structured extraction, and PyTorch training remain Colab-only.
+
+## 2026-07-29 — Repair V2 raw-cache manifest comparison
+
+V2 Cell 4 initially rejected the completed raw cache even though its
+preprocessing configuration was unchanged. The manifest is JSON, which restores
+Python tuples such as `bandpass_hz` and `drop_channel_indices` as lists. The
+loader compared that deserialized dictionary directly with the dataclass
+dictionary containing tuples, producing a false mismatch.
+
+The loader now compares both configurations through their canonical JSON
+representations. This changes no preprocessing, signature, cached EEG value,
+split, model, or gate, and the existing subject packs are reused. Cell 4 also
+explicitly reloads `src.raw_cache` so a runtime that reruns Cell 1 after pulling
+the fix does not retain the older imported module. A regression test covers the
+tuple-to-list round trip.

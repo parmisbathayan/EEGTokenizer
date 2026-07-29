@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -5,10 +6,21 @@ from pathlib import Path
 import numpy as np
 
 from src.config import PreprocessConfig
-from src.raw_cache import _cache_signature, _load_subject_pack, _write_subject_pack
+from src.raw_cache import (
+    _cache_signature,
+    _json_equivalent,
+    _load_subject_pack,
+    _write_subject_pack,
+)
 
 
 class RawCacheTests(unittest.TestCase):
+    def test_json_round_trip_config_is_equivalent(self):
+        original = PreprocessConfig().to_dict()
+        restored = json.loads(json.dumps(original))
+        self.assertNotEqual(original, restored)
+        self.assertTrue(_json_equivalent(original, restored))
+
     def test_subject_pack_round_trip_preserves_variable_lengths(self):
         config = PreprocessConfig()
         signature = _cache_signature(config)
