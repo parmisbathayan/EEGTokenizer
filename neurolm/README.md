@@ -25,7 +25,7 @@ The upstream sources are:
 | --- | --- | --- | --- | --- |
 | V1 | Frozen NeuroLM-B global moments | Balanced logistic regression | [`neurolm_zuco_colab.ipynb`](notebooks/neurolm_zuco_colab.ipynb) | Complete; yellow/inconclusive |
 | V2 | Raw 104-channel one-second EEG windows | Compact EEGNet | [`neurolm_raw_eegnet_v2_colab.ipynb`](notebooks/neurolm_raw_eegnet_v2_colab.ipynb) | Prepared; pending Colab run |
-| V3 | Structured frozen NeuroLM channel/time sequence | Small attention probe | Separate future notebook | Planned only |
+| V3 | Factorized frozen NeuroLM channel/time sequence | Small attention probe | [`neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb) | Prepared; pending Colab run |
 | V4 | Full NeuroLM-B EEG-to-GPT-2 path | Three label verbalizers | Separate future notebook | Planned only |
 
 Each version has its own notebook, Drive cache, result directory, and locked
@@ -77,9 +77,12 @@ For V1, open
 [`notebooks/neurolm_zuco_colab.ipynb`](notebooks/neurolm_zuco_colab.ipynb).
 For V2, open
 [`notebooks/neurolm_raw_eegnet_v2_colab.ipynb`](notebooks/neurolm_raw_eegnet_v2_colab.ipynb).
+For V3, open
+[`notebooks/neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb).
 Select a GPU runtime and run every cell in order. Only the Drive paths in Cell 2
 may need editing. The full locked V2 protocol is documented in
-[`V2_RAW_EEGNET.md`](V2_RAW_EEGNET.md).
+[`V2_RAW_EEGNET.md`](V2_RAW_EEGNET.md), and V3 is documented in
+[`V3_STRUCTURED_PROBE.md`](V3_STRUCTURED_PROBE.md).
 
 The V1 notebook performs these cloud-only downloads:
 
@@ -106,10 +109,12 @@ MyDrive/Thesis/
 ├── CachedArtifacts/eeg_tokenizer/neurolm/
 │   ├── upstream_checkpoints/checkpoints/NeuroLM-B.pt
 │   ├── frozen_features_v1/<subject>/sentence_*.npz
-│   └── raw_eeg_packs_v2/<subject>.npz
+│   ├── raw_eeg_packs_v2/<subject>.npz
+│   └── structured_features_v3/<subject>.npz
 └── Results/eeg_tokenizer/neurolm/
     ├── frozen_probe_v1/
-    └── raw_eegnet_v2/
+    ├── raw_eegnet_v2/
+    └── structured_probe_v3/
 ```
 
 ## Important boundary

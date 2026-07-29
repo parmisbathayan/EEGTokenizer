@@ -161,8 +161,8 @@ class OfficialNeuroLMEncoder:
             raise ValueError("pooling produced non-finite features")
         return feature
 
-    def encode_recording(self, eeg):
-        """Encode channels x time EEG and return one fixed vector plus diagnostics."""
+    def encode_recording_tokens(self, eeg):
+        """Return frozen embeddings as seconds x mapped channels x embedding."""
 
         eeg = np.asarray(eeg, dtype=np.float32)
         if eeg.ndim != 2 or eeg.shape[0] != 104:
@@ -185,12 +185,21 @@ class OfficialNeuroLMEncoder:
             encoded = self._encode_block(patches, channel_ids, time_ids)
             chunks.append(encoded.reshape(stop - start, n_channels, -1))
         embeddings = np.concatenate(chunks, axis=0)
-        feature = self.pool_embeddings(embeddings)
-        return feature, {
+        details = {
             "seconds": int(seconds),
             "channels": int(n_channels),
             "patches": int(seconds * n_channels),
             "embedding_dim": int(embeddings.shape[-1]),
+        }
+        return embeddings, details
+
+    def encode_recording(self, eeg):
+        """Encode channels x time EEG and return the unchanged V1 pooled vector."""
+
+        embeddings, details = self.encode_recording_tokens(eeg)
+        feature = self.pool_embeddings(embeddings)
+        return feature, {
+            **details,
             "feature_dim": int(feature.size),
             "feature_norm": float(np.linalg.norm(feature)),
         }

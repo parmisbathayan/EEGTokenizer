@@ -87,8 +87,8 @@ has been recorded.
 
 | Component | V1: frozen pooled NeuroLM | V2: raw EEGNet | V3: structured frozen NeuroLM | V4: NeuroLM plus GPT-2 |
 | --- | --- | --- | --- | --- |
-| Status | Complete — yellow/inconclusive | Prepared — pending Colab run | Planned only | Planned only |
-| Input | NeuroLM channel/time embeddings | Native raw EGI EEG | Unpooled NeuroLM channel/time sequence | Official full NeuroLM EEG sequence plus fixed instruction |
+| Status | Complete — yellow/inconclusive | Prepared — pending Colab run | Prepared — pending Colab run | Planned only |
+| Input | NeuroLM channel/time embeddings | Native raw EGI EEG | Factorized NeuroLM channel and per-second sequence | Official full NeuroLM EEG sequence plus fixed instruction |
 | NeuroLM source | Frozen NeuroLM-B neural encoder | Not used | Same frozen encoder | Full NeuroLM-B checkpoint |
 | Text | None | None | None | Identical instruction only; no stimulus sentence |
 | Temporal structure | Global mean, standard deviation and slope | Learned local temporal convolutions | Learned channel and temporal attention | GPT-2 causal attention |
@@ -98,7 +98,7 @@ has been recorded.
 | Aligned macro-F1 | 0.3493 | Pending | Not run | Not run |
 | Shuffled macro-F1 | 0.3179 | Pending | Not run | Not run |
 | Aligned minus shuffled | +0.0314 across folds | Pending | Not run | Not run |
-| Decision | Effect/seed criteria pass; corrected interval crosses zero | Apply new-screen stoplight gate | Separate future notebook | Separate future notebook; final screen |
+| Decision | Effect/seed criteria pass; corrected interval crosses zero | Apply new-screen stoplight gate | Apply new-screen stoplight gate | Separate future notebook; final screen |
 
 ## 2026-07-29 — Exclude spatial outliers instead of aborting
 
@@ -208,3 +208,45 @@ written after every setup/fold under `raw_eegnet_v2`.
 No package, model, dataset, cache, or environment was downloaded or installed on
 the Mac. Colab supplies every V2 runtime dependency; V2 downloads no external
 model checkpoint.
+
+## 2026-07-29 — Prepare V3 while V2 evaluates
+
+V3 was locked and implemented before observing V2's result. Waiting for V2 would
+not provide a scientific advantage because the versions test different
+hypotheses; using its score to redesign V3 would instead turn the bounded screen
+into adaptive model search.
+
+The dedicated notebook is
+`notebooks/neurolm_structured_probe_v3_colab.ipynb`. It can begin after V2 has
+finished creating `raw_eeg_packs_v2`; V2's neural evaluation can continue in a
+separate Colab runtime. V3 reuses those preprocessed subject packs and the
+existing 2.38 GB NeuroLM-B checkpoint without reading V2 metrics.
+
+The official frozen encoder now exposes the exact `seconds × mapped channels ×
+embedding` tensor that was already used internally by V1 pooling. V1's public
+feature result is unchanged and a regression test verifies that pooling the new
+structured output reproduces the original V1 vector.
+
+To avoid a many-gigabyte full Cartesian cache, V3 saves two float16 views per
+reader: 102 channel tokens formed by averaging over seconds, and a variable
+number of second tokens formed by averaging over channels. This preserves
+spatial identity and temporal order separately while explicitly discarding
+their exact interaction. One atomic pack is written per subject under
+`structured_features_v3`; the expected total is roughly 0.7-1.0 GB depending on
+recording lengths and compression.
+
+The locked approximately 133k-parameter probe shares a `768 → 96` projection,
+learns separate channel and time attention, and fuses both summaries with their
+absolute difference and elementwise product. NeuroLM remains fully frozen.
+Reader rows receive equal total weight per sentence, and reader probabilities
+are averaged only for held-out sentence evaluation.
+
+The primary control independently permutes whole reader bundles inside every
+train, validation, and test split. A secondary inference-only structure control
+permutes both channel identity and time order while preserving token values.
+The primary stoplight gate, seeds, folds, early-stopping rule, corrected
+interval, and no-tuning policy match V2. Results are isolated under
+`structured_probe_v3` and resume at setup/fold granularity.
+
+No Mac dependency or artifact was downloaded or installed. All NeuroLM source,
+checkpoint reuse, structured extraction, and PyTorch training remain Colab-only.
