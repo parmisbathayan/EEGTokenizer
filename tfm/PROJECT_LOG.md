@@ -197,7 +197,7 @@ the dated entries above and below it.
 | Reader handling during training | Normalized reader histograms averaged before classification | Reader recordings remain separate with equal total loss per sentence | Frozen reader features averaged before the linear probe | One reader sampled per sentence per epoch; reader resampled each epoch |
 | Reader handling during testing | One already-averaged sentence feature | Reader probabilities averaged into one sentence prediction | One already-averaged sentence feature | All reader probabilities averaged into one sentence prediction |
 | Trainable model | TF-IDF plus balanced logistic regression | Approximately 24k-parameter temporal CNN, channel attention, and linear head | Standardized, class-balanced L2 logistic regression | Complete official MTP encoder plus a new three-class head |
-| TFM parameters updated | None | None | None | All official encoder parameters; tokenizer remains fixed |
+| TFM parameters updated | None | None | None | All differentiable encoder weights; non-floating index tensors and tokenizer remain fixed |
 | Evaluation unit | Sentence | Sentence | Sentence | Sentence |
 | Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
 | Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds | 0.3132 ± 0.0481 across folds | Pending |
@@ -347,9 +347,11 @@ follow a failure.
 V4 tests the main unresolved mechanistic alternative: perhaps the MTP-pretrained
 clinical encoder is a useful initialization but its frozen representation cannot
 express ZuCo reading sentiment. The tokenizer and discrete V1 tokens stay fixed,
-while the entire official 64x4 encoder and a new three-class head are optimized
-within each training fold. The encoder uses a conservative `1e-5` learning rate;
-the randomly initialized head uses `3e-4`.
+while every differentiable weight in the official 64x4 encoder and a new
+three-class head are optimized within each training fold. Any integer-valued
+index parameter is explicitly reported and remains non-trainable because PyTorch
+does not define gradients for integer tensors. The encoder uses a conservative
+`1e-5` learning rate; the randomly initialized head uses `3e-4`.
 
 To keep full adaptation feasible on free Colab without letting subjects with more
 recordings dominate, every epoch samples exactly one reader for each training

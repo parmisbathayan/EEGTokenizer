@@ -50,7 +50,8 @@ V1 is the completed histogram baseline. V2 keeps the tokenizer and official
 codebook frozen but replaces histogramming with a small structured token-map
 classifier. V3 passes the cached maps through the official frozen MTP encoder and
 fits a linear probe to the resulting sentence features. V4 is the final version:
-it fine-tunes the complete MTP encoder with a new sentiment head. The fixed
+it fine-tunes every differentiable MTP-encoder weight with a new sentiment head.
+The fixed
 protocols are documented in
 [`V2_TOKEN_MAP.md`](V2_TOKEN_MAP.md) and
 [`V3_ENCODER_PROBE.md`](V3_ENCODER_PROBE.md), and

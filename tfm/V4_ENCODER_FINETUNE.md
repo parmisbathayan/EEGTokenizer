@@ -43,7 +43,7 @@ flowchart LR
 | --- | --- | --- |
 | Tokenizer | Frozen V1 tokenizer and token IDs | Isolates encoder adaptation and avoids retraining an 8,192-entry VQ model on 400 labels |
 | Initialization | Official MTP-pretrained 64x4 encoder | Tests transfer through supervised adaptation rather than training from scratch |
-| Trainable parameters | Entire encoder plus a new three-class head | Directly tests the unresolved frozen-versus-unfrozen question |
+| Trainable parameters | Every floating-point encoder weight plus a new three-class head | Directly tests the unresolved frozen-versus-unfrozen question; integer index tensors are not differentiable in PyTorch |
 | Montage adapter | Six consecutive 16-channel groups plus an 8-channel tail | Uses all 104 channels while respecting the official 2,048-token maximum |
 | Group combination | Trainable seven-group mixer initialized to the channel-count-weighted mean | Begins exactly at equal per-channel weighting but can learn that electrode regions contribute differently |
 | Training sampling | One reader per training sentence per epoch | Gives every sentence equal influence and keeps free-Colab runtime bounded |
@@ -78,6 +78,9 @@ whether EEG and sentiment sentence are correctly aligned.
 - Every fold/setup starts again from the verified MTP checkpoint; a prior fold's
   fine-tuned weights cannot leak into the next fold.
 - The checkpoint loader rejects missing non-head weights and all unexpected keys.
+- Every floating-point encoder weight must be trainable and covered by exactly one
+  optimizer group. Any official non-floating index parameter is reported and
+  correctly left non-trainable because gradients are undefined for integer data.
 - The group mixer preserves the identity of the seven montage regions; its exact
   initialization reproduces the V3 channel-count weighting before adaptation.
 - The run signature binds results to the token fingerprint, checkpoint SHA-256,

@@ -46,7 +46,7 @@ def _checkpoint_cache_entry(checkpoint_path):
 class FinetuneProbeConfig:
     """Locked architecture, optimization, evaluation, and gate settings."""
 
-    implementation_version: int = 1
+    implementation_version: int = 2
     seeds: tuple = (42, 52, 62)
     n_splits: int = 5
     validation_fraction: float = 0.20
@@ -168,13 +168,25 @@ class FinetunableOfficialTFMEncoder:
                         group_size / config.expected_channels
                     )
         self.model.add_module("v4_group_mixer", group_mixer)
-        for parameter in self.model.parameters():
-            parameter.requires_grad_(True)
+        nonfloating_parameters = []
+        for name, parameter in self.model.named_parameters():
+            is_differentiable = parameter.is_floating_point() or parameter.is_complex()
+            parameter.requires_grad_(is_differentiable)
+            if not is_differentiable:
+                nonfloating_parameters.append(
+                    {
+                        "name": name,
+                        "dtype": str(parameter.dtype),
+                        "parameter_count": int(parameter.numel()),
+                    }
+                )
         self.model.to(self.device)
 
         head_parameters = []
         encoder_parameters = []
         for name, parameter in self.model.named_parameters():
+            if not parameter.requires_grad:
+                continue
             if "classification_head" in name or "v4_group_mixer" in name:
                 head_parameters.append(parameter)
             else:
@@ -183,8 +195,12 @@ class FinetunableOfficialTFMEncoder:
             raise ValueError("could not separate encoder and classification-head parameters")
         head_ids = {id(parameter) for parameter in head_parameters}
         encoder_ids = {id(parameter) for parameter in encoder_parameters}
-        all_ids = {id(parameter) for parameter in self.model.parameters()}
-        if (head_ids & encoder_ids) or ((head_ids | encoder_ids) != all_ids):
+        trainable_ids = {
+            id(parameter)
+            for parameter in self.model.parameters()
+            if parameter.requires_grad
+        }
+        if (head_ids & encoder_ids) or ((head_ids | encoder_ids) != trainable_ids):
             raise RuntimeError("V4 optimizer parameter groups overlap or omit parameters")
         self.encoder_parameters = encoder_parameters
         self.head_parameters = head_parameters
@@ -201,9 +217,12 @@ class FinetunableOfficialTFMEncoder:
             "missing_keys": list(incompatible.missing_keys),
             "unexpected_keys": list(incompatible.unexpected_keys),
             "excluded_classification_head_keys": sorted(set(state) - set(filtered)),
-            "all_parameters_trainable": all(
-                parameter.requires_grad for parameter in self.model.parameters()
+            "all_floating_parameters_trainable": all(
+                parameter.requires_grad
+                for parameter in self.model.parameters()
+                if parameter.is_floating_point() or parameter.is_complex()
             ),
+            "nonfloating_parameters": nonfloating_parameters,
             "total_parameter_count": int(total_parameters),
             "trainable_encoder_parameter_count": int(encoder_count),
             "trainable_head_parameter_count": int(head_count),
