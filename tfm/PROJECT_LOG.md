@@ -188,7 +188,7 @@ the dated entries above and below it.
 
 | Component | V1: frozen histogram | V2: frozen token map | V3: frozen official encoder | V4: adapted official encoder |
 | --- | --- | --- | --- | --- |
-| Status | Complete — gate failed | Complete — gate failed | Complete — gate failed | Prepared — pending Colab run |
+| Status | Complete — gate failed | Complete — gate failed | Complete — gate failed | Complete — gate failed; branch closed |
 | TFM tokenizer | Frozen | Frozen | Frozen; reuses V1 token IDs | Frozen; reuses V1 token IDs |
 | TFM codebook/embedding | Used only to produce token IDs | Frozen 8,192 × 64 embedding table | Part of the frozen official MTP encoder | Official encoder token embedding is initialized from MTP and trainable |
 | Classifier input | One 8,192-bin token histogram per sentence | Full 104-channel × variable-time token map per reader | One 64-value pretrained-encoder feature per sentence | Full 104-channel × variable-time token map for a sampled reader |
@@ -200,10 +200,10 @@ the dated entries above and below it.
 | TFM parameters updated | None | None | None | All differentiable encoder weights; non-floating index tensors and tokenizer remain fixed |
 | Evaluation unit | Sentence | Sentence | Sentence | Sentence |
 | Generalization claim | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool | Unseen sentences for the known reader pool |
-| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds | 0.3132 ± 0.0481 across folds | Pending |
-| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds | 0.3391 ± 0.0667 across folds | Pending |
-| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds | −0.0259; negative for all seeds | Pending |
-| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 | Frozen encoder did not transfer | Apply final locked gate; no V5 |
+| Main aligned macro-F1 | 0.3116 | 0.2233 ± 0.0647 across folds | 0.3132 ± 0.0481 across folds | 0.2870 ± 0.0514 across folds |
+| Shuffled macro-F1 | 0.3401 | 0.2549 ± 0.0463 across folds | 0.3391 ± 0.0667 across folds | 0.3004 ± 0.0712 across folds |
+| Aligned minus shuffled | −0.0285; negative for all seeds | −0.0315; negative for all seeds | −0.0259; negative for all seeds | −0.0134; positive for 1 of 3 seeds |
+| Decision | Do not advance on V1 | No evidence of useful aligned signal; proceed only to predefined V3 | Frozen encoder did not transfer | Adaptation did not transfer; stop with no V5 |
 
 ## 2026-07-28 — Replace thousands of Drive reads with resumable subject packs
 
@@ -380,3 +380,51 @@ The five gate criteria and `+0.015` minimum effect remain unchanged. V4 changes
 the multiplicity count from three to four and therefore uses a conservative
 98.75% paired bootstrap interval (`0.05 / 4`). Pass or fail, this run closes the
 TFM transfer branch.
+
+## 2026-07-29 — V4 completed, failed the final gate, and closed the branch
+
+The Colab run reached `evaluation_complete` and wrote the complete canonical
+result set under `Results/eeg_tokenizer/tfm/encoder_finetune_v4`: 45 fold/setup
+metric rows, 30 neural fits, all out-of-fold predictions, 196 epoch-history rows,
+the corrected bootstrap, and the final gate decision. It used all 4,532 cached
+recordings representing 400 sentences and 12 subjects.
+
+| Result | Aligned encoder fine-tune | Shuffled control | Majority |
+| --- | ---: | ---: | ---: |
+| Accuracy, fold mean | 0.3375 | 0.3458 | 0.3500 |
+| Balanced accuracy, fold mean | 0.3368 | 0.3457 | 0.3333 |
+| Macro-F1, fold mean ± SD | 0.2870 ± 0.0514 | 0.3004 ± 0.0712 | 0.1728 ± 0.0000 |
+
+| Locked criterion | Required | Observed | Pass |
+| --- | ---: | ---: | :---: |
+| Aligned balanced accuracy above chance | > 0.3333 | 0.3368 | Yes |
+| Aligned − shuffled macro-F1 | ≥ +0.0150 | −0.0134 | No |
+| Seeds with positive aligned − shuffled delta | ≥ 2 of 3 | 1 of 3 | No |
+| Corrected 98.75% bootstrap lower bound | > 0 | −0.0510; interval [−0.0510, 0.0417] | No |
+| Aligned macro-F1 above majority | > 0.1728 | 0.2870 | Yes |
+
+The per-seed aligned-minus-shuffled macro-F1 differences were +0.0307,
+−0.0152, and −0.0558 for seeds 42, 52, and 62. Aligned V4 won 8 of 15
+fold-level comparisons and lost 7, but its losing margins were larger, leaving
+both the overall effect and two of three seed effects negative. The paired
+bootstrap distribution had mean −0.0042 and its four-version-corrected interval
+comfortably crossed zero.
+
+The implementation audits rule out the earlier detached/non-floating-parameter
+failure. The official checkpoint loaded 57 encoder keys; only the intentionally
+replaced classification-head weights were missing, with no unexpected keys. All
+724,608 floating encoder parameters were trainable, while the single reported
+16-element integer index remained fixed as required by PyTorch. Every neural fit
+recorded a nonzero encoder update (L2 range 0.0372–0.1353, mean 0.0840). Fits ran
+4–12 epochs with a mean of 6.53, so the result is not a frozen-encoder artifact,
+a detached computation graph, or an incomplete evaluation.
+
+The small `0.0035` balanced-accuracy excess over nominal chance is not evidence
+of useful transfer: aligned accuracy remained below the majority baseline,
+shuffled training performed better on every aggregate metric, the required
+effect had the wrong sign, and the corrected interval did not exclude zero.
+Full supervised adaptation therefore did not unlock stable sentence-aligned
+sentiment information in this fixed TFM-to-ZuCo setup. In accordance with the
+bounded plan, there will be no V5 or post-hoc V4 variation. This conclusion is
+limited to the tested transfer protocol and does not claim that TFM fails on its
+source clinical tasks or that EEG cannot encode sentiment under other methods.
