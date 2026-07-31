@@ -1,0 +1,2 @@
+# Milestone 1 uses numpy, scipy, and h5py already provided by Google Colab.
+# Add only genuinely missing runtime dependencies in later locked milestones.

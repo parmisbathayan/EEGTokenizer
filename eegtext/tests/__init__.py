@@ -1,0 +1,1 @@
+"""EEGText tests."""
