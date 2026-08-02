@@ -384,3 +384,17 @@ Implementation files are `src/partial_finetune.py`, `run_v5.py`,
 `tests/test_partial_finetune.py`, `V5_PARTIAL_FINETUNE.md`, and
 `notebooks/neurolm_partial_finetune_v5_colab.ipynb`. No package, checkpoint,
 dataset, cache, or environment was downloaded or installed on the Mac.
+
+## 2026-08-02 — Isolate V5-critical Colab tests
+
+The first V5 Cell 1 run stopped in repository-wide test discovery before any
+checkpoint or data was loaded. That command included unrelated experiment
+families, and `subprocess.run(check=True)` hid their useful test output behind a
+generic `CalledProcessError` in the notebook traceback.
+
+Cell 1 now runs the V5 module and its direct NeuroLM/raw-cache dependencies
+explicitly. It captures and prints the full verbose test report before raising,
+so a genuine V5 failure remains blocking and diagnosable while an unrelated
+text-reference test cannot prevent V5 setup. No model, data, split, training
+configuration, or result signature changed; rerunning Cell 1 reuses all Drive
+artifacts.
