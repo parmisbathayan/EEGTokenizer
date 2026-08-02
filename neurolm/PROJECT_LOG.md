@@ -85,20 +85,20 @@ has been recorded.
 
 ## Maintained version comparison
 
-| Component | V1: frozen pooled NeuroLM | V2: raw EEGNet | V3: structured frozen NeuroLM | V4: NeuroLM plus GPT-2 |
-| --- | --- | --- | --- | --- |
-| Status | Complete — yellow/inconclusive | Complete — yellow/suggestive | Complete — red | Prepared — pending Colab run |
-| Input | NeuroLM channel/time embeddings | Native raw EGI EEG | Factorized NeuroLM channel and per-second sequence | Official full NeuroLM EEG sequence plus fixed instruction |
-| NeuroLM source | Frozen NeuroLM-B neural encoder | Not used | Same frozen encoder | Full NeuroLM-B checkpoint |
-| Text | None | None | None | Identical instruction only; no stimulus sentence |
-| Temporal structure | Global mean, standard deviation and slope | Learned local temporal convolutions | Learned channel and temporal attention | GPT-2 causal attention |
-| Reader handling | Feature mean before classification | Reader rows; mean held-out probabilities | Reader rows; mean held-out probabilities | Reader rows; mean label probabilities |
-| Trainable model | Standardized logistic regression | One locked compact EEGNet | Small attention probe | 32-unit residual adapter and fixed GPT-2 label verbalizers |
-| Evaluation unit | Unique sentence | Unique sentence | Unique sentence | Unique sentence |
-| Aligned macro-F1 | 0.3493 | 0.3102 | 0.2455 | Pending |
-| Shuffled macro-F1 | 0.3179 | 0.2746 | 0.2577 | Pending |
-| Aligned minus shuffled | +0.0314 across folds | +0.0356 across folds | -0.0122 across folds | Pending |
-| Decision | Yellow; corrected interval crosses zero | Yellow; corrected interval crosses zero | Red; shuffled is better | Final bounded screen |
+| Component | V1: frozen pooled NeuroLM | V2: raw EEGNet | V3: structured frozen NeuroLM | V4: NeuroLM plus GPT-2 | V5: partial GPT-2 fine-tune |
+| --- | --- | --- | --- | --- | --- |
+| Status | Complete — yellow/inconclusive | Complete — yellow/suggestive | Complete — red | Completed in Colab; metrics remain in Drive | Prepared — pending Colab run |
+| Input | NeuroLM channel/time embeddings | Native raw EGI EEG | Factorized NeuroLM channel and per-second sequence | Official full NeuroLM EEG sequence plus fixed instruction | Same V4 EEG sequence and instruction |
+| NeuroLM source | Frozen NeuroLM-B neural encoder | Not used | Same frozen encoder | Full NeuroLM-B checkpoint | Same checkpoint; top two GPT-2 blocks unfrozen |
+| Text | None | None | None | Identical instruction only; no stimulus sentence | Identical instruction only; no stimulus sentence |
+| Temporal structure | Global mean, standard deviation and slope | Learned local temporal convolutions | Learned channel and temporal attention | GPT-2 causal attention | Adapted GPT-2 causal attention |
+| Reader handling | Feature mean before classification | Reader rows; mean held-out probabilities | Reader rows; mean held-out probabilities | Reader rows; mean label probabilities | One reader/sentence/epoch; all-reader test mean |
+| Trainable model | Standardized logistic regression | One locked compact EEGNet | Small attention probe | 32-unit residual adapter and fixed GPT-2 label verbalizers | Final two GPT-2 blocks, final norm and same adapter |
+| Evaluation unit | Unique sentence | Unique sentence | Unique sentence | Unique sentence | Unique sentence |
+| Aligned macro-F1 | 0.3493 | 0.3102 | 0.2455 | Stored in Colab Drive | Pending |
+| Shuffled macro-F1 | 0.3179 | 0.2746 | 0.2577 | Stored in Colab Drive | Pending |
+| Aligned minus shuffled | +0.0314 across folds | +0.0356 across folds | -0.0122 across folds | Stored in Colab Drive | Pending |
+| Decision | Yellow; corrected interval crosses zero | Yellow; corrected interval crosses zero | Red; shuffled is better | Broad screen complete | One authorized post-screen adaptation test |
 
 ## 2026-07-29 — Exclude spatial outliers instead of aborting
 
@@ -345,3 +345,42 @@ one of the multiplicity-corrected EEG screens.
 The Colab notebook persists roughly 552 MB of GPT-2 weights and tokenizer files
 plus a roughly 1-2 MB feature cache in Drive. No Mac dependency or model was
 downloaded or installed. Scientific results are pending the Colab run.
+
+## 2026-08-02 — Prepare V5 partial NeuroLM/GPT-2 fine-tuning
+
+The user explicitly authorized one post-screen test of adapting NeuroLM to the
+ZuCo data. V5 is a separate notebook and result directory; it does not rewrite
+V4 or silently convert the bounded V1-V4 screen into hyperparameter tuning.
+
+V5 reuses V2's raw EEG packs, the accepted 102-channel spatial mapping, the
+fixed three-second start/middle/end input, V4's identical instruction, and the
+same three sentiment verbalizers. The neural tokenizer, token embeddings,
+lower GPT-2 blocks, and label-token vectors remain frozen. Only the final two
+GPT-2 transformer blocks, final normalization, residual 32-unit adapter, and
+three label biases are trainable. Transformer and adapter learning rates are
+locked at `1e-5` and `5e-4`, respectively.
+
+Because final V4 prompt states become invalid as soon as GPT-2 changes, V5 must
+run raw EEG through the full model during training. To keep 30 end-to-end fits
+feasible in Colab, each epoch resamples one reader from every training sentence
+bundle and early stopping uses one fixed reader per validation sentence. Final
+testing still averages probabilities from every available reader for each
+held-out sentence. The complete model is loaded once per runtime and its
+trainable pretrained subset is restored before every independent fit.
+
+Evaluation retains V4's five unseen-sentence folds, seeds 42/52/62, majority
+reference, and separately trained split-local shuffled EEG control. Completed
+setup/fold results are atomic and resumable. V5 reports a 95% paired sentence
+bootstrap because it is one explicitly authorized follow-up, not an additional
+member retroactively added to the predeclared V2-V4 multiplicity family.
+
+This is not yet subject-independent: it tests unseen sentences from the known
+reader pool so that its split structure remains comparable to V4. A green result
+would justify a separately locked confirmation holding out both subjects and
+sentences. Stimulus text is also deferred to a later multimodal notebook so its
+effect is not confounded with unfreezing.
+
+Implementation files are `src/partial_finetune.py`, `run_v5.py`,
+`tests/test_partial_finetune.py`, `V5_PARTIAL_FINETUNE.md`, and
+`notebooks/neurolm_partial_finetune_v5_colab.ipynb`. No package, checkpoint,
+dataset, cache, or environment was downloaded or installed on the Mac.

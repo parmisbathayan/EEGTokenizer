@@ -28,6 +28,7 @@ The upstream sources are:
 | V2 | Raw 104-channel one-second EEG windows | Compact EEGNet | [`neurolm_raw_eegnet_v2_colab.ipynb`](notebooks/neurolm_raw_eegnet_v2_colab.ipynb) | Complete; yellow/suggestive |
 | V3 | Factorized frozen NeuroLM channel/time sequence | Small attention probe | [`neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb) | Complete; red |
 | V4 | Full frozen NeuroLM-B EEG-to-GPT-2 prompt state | Residual adapter + fixed label verbalizers | [`neurolm_gpt2_verbalizer_v4_colab.ipynb`](notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb) | Prepared; pending Colab run |
+| V5 | Same EEG-to-GPT-2 path with final two GPT-2 blocks unfrozen | Residual adapter + fixed label verbalizers | [`neurolm_partial_finetune_v5_colab.ipynb`](notebooks/neurolm_partial_finetune_v5_colab.ipynb) | Prepared; pending Colab run |
 
 There is also a separate frozen GPT-2 **text-only reference**. It uses each
 stimulus sentence once, no EEG and no reader rows, so it is not V5 and does not
@@ -88,6 +89,8 @@ For V3, open
 [`notebooks/neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb).
 For V4, open
 [`notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb`](notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb).
+For V5, open
+[`notebooks/neurolm_partial_finetune_v5_colab.ipynb`](notebooks/neurolm_partial_finetune_v5_colab.ipynb).
 For the separate text-only reference, open
 [`notebooks/neurolm_text_gpt2_reference_colab.ipynb`](notebooks/neurolm_text_gpt2_reference_colab.ipynb).
 Select a GPU runtime and run every cell in order. Only the Drive paths in Cell 2
@@ -95,7 +98,9 @@ may need editing. The full locked V2 protocol is documented in
 [`V2_RAW_EEGNET.md`](V2_RAW_EEGNET.md), V3 in
 [`V3_STRUCTURED_PROBE.md`](V3_STRUCTURED_PROBE.md), and V4 in
 [`V4_GPT2_VERBALIZER.md`](V4_GPT2_VERBALIZER.md). The text reference is
-documented in [`TEXT_GPT2_BASELINE.md`](TEXT_GPT2_BASELINE.md).
+documented in [`TEXT_GPT2_BASELINE.md`](TEXT_GPT2_BASELINE.md), and the
+post-screen partial fine-tuning test in
+[`V5_PARTIAL_FINETUNE.md`](V5_PARTIAL_FINETUNE.md).
 
 The V1 notebook performs these cloud-only downloads:
 
@@ -132,6 +137,7 @@ MyDrive/Thesis/
     ├── raw_eegnet_v2/
     ├── structured_probe_v3/
     ├── gpt2_verbalizer_v4/
+    ├── partial_finetune_v5/
     └── text_gpt2_reference/
 ```
 
