@@ -325,3 +325,23 @@ broad screen.
 No package, model, dataset, runtime, or environment was downloaded or installed
 on the Mac. V4's official source fetch, small `tiktoken` dependency, checkpoint
 reuse, extraction, and GPU evaluation are Colab-only.
+
+## 2026-07-30 — Add a separate frozen GPT-2 text-only reference
+
+A text-only reference was added without extending the bounded EEG model family.
+It reads the 400 unique stimulus sentences directly from the fixed sentiment
+CSV, never reads EEG or creates reader duplicates, and remains explicitly
+outside V1-V4.
+
+The standard 124M-parameter `openai-community/gpt2` checkpoint is pinned at
+revision `607a30d783dfa663caf39e06633721c8d4cfcd7e` and fully frozen. Each
+sentence is represented by the final non-padding token's 768-dimensional last
+hidden state. A class-balanced logistic regression uses the same three outer
+seeds, five folds, nested regularization search, split-local shuffled-pairing
+control, and majority reference used by the original frozen probe. The paired
+text-minus-shuffled interval is 95% because this is a standalone reference, not
+one of the multiplicity-corrected EEG screens.
+
+The Colab notebook persists roughly 552 MB of GPT-2 weights and tokenizer files
+plus a roughly 1-2 MB feature cache in Drive. No Mac dependency or model was
+downloaded or installed. Scientific results are pending the Colab run.

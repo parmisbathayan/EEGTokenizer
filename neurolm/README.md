@@ -29,6 +29,12 @@ The upstream sources are:
 | V3 | Factorized frozen NeuroLM channel/time sequence | Small attention probe | [`neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb) | Complete; red |
 | V4 | Full frozen NeuroLM-B EEG-to-GPT-2 prompt state | Residual adapter + fixed label verbalizers | [`neurolm_gpt2_verbalizer_v4_colab.ipynb`](notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb) | Prepared; pending Colab run |
 
+There is also a separate frozen GPT-2 **text-only reference**. It uses each
+stimulus sentence once, no EEG and no reader rows, so it is not V5 and does not
+alter the bounded V1-V4 EEG screen. See
+[`TEXT_GPT2_BASELINE.md`](TEXT_GPT2_BASELINE.md) and
+[`neurolm_text_gpt2_reference_colab.ipynb`](notebooks/neurolm_text_gpt2_reference_colab.ipynb).
+
 Each version has its own notebook, Drive cache, result directory, and locked
 configuration. Earlier notebooks are not rewritten when a new version is added.
 
@@ -82,11 +88,14 @@ For V3, open
 [`notebooks/neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb).
 For V4, open
 [`notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb`](notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb).
+For the separate text-only reference, open
+[`notebooks/neurolm_text_gpt2_reference_colab.ipynb`](notebooks/neurolm_text_gpt2_reference_colab.ipynb).
 Select a GPU runtime and run every cell in order. Only the Drive paths in Cell 2
 may need editing. The full locked V2 protocol is documented in
 [`V2_RAW_EEGNET.md`](V2_RAW_EEGNET.md), V3 in
 [`V3_STRUCTURED_PROBE.md`](V3_STRUCTURED_PROBE.md), and V4 in
-[`V4_GPT2_VERBALIZER.md`](V4_GPT2_VERBALIZER.md).
+[`V4_GPT2_VERBALIZER.md`](V4_GPT2_VERBALIZER.md). The text reference is
+documented in [`TEXT_GPT2_BASELINE.md`](TEXT_GPT2_BASELINE.md).
 
 The V1 notebook performs these cloud-only downloads:
 
@@ -115,12 +124,15 @@ MyDrive/Thesis/
 │   ├── frozen_features_v1/<subject>/sentence_*.npz
 │   ├── raw_eeg_packs_v2/<subject>.npz
 │   ├── structured_features_v3/<subject>.npz
-│   └── gpt2_prompt_features_v4/<subject>.npz
+│   ├── gpt2_prompt_features_v4/<subject>.npz
+│   ├── text_gpt2_hf_cache/
+│   └── text_gpt2_features_v1.npz
 └── Results/eeg_tokenizer/neurolm/
     ├── frozen_probe_v1/
     ├── raw_eegnet_v2/
     ├── structured_probe_v3/
-    └── gpt2_verbalizer_v4/
+    ├── gpt2_verbalizer_v4/
+    └── text_gpt2_reference/
 ```
 
 ## Important boundary
