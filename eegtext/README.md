@@ -106,4 +106,10 @@ MyDrive/Thesis/
 └── Results/eeg_tokenizer/eegtext/
 ```
 
+These paths match the existing `tfm` and `neurolm` project layout in Drive. The
+first notebook defines them centrally as `DATA_ROOT`, `CACHE_ROOT`, and
+`RESULTS_ROOT`; no path editing is required for the current Drive structure.
+Task 2 and Task 3 do not exist in Drive yet, so their entries are reserved
+download destinations rather than expected inputs for the first run.
+
 See `EXPERIMENT_PLAN.md` for the leakage controls and staged model plan.

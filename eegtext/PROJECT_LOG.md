@@ -81,3 +81,25 @@ outputs remain outside Git.
 
 No package, dataset, checkpoint, runtime, or environment was downloaded or
 installed on the Mac for this milestone.
+
+## 2026-08-02 — Verify and lock the Drive layout
+
+Inspected the existing Drive folder metadata before fixing the EEGText paths.
+The active research tree is `MyDrive/Thesis`, and the TFM and NeuroLM projects
+both use parallel folders under `CachedArtifacts/eeg_tokenizer` and
+`Results/eeg_tokenizer`. EEGText now follows the same convention:
+
+- source data: `MyDrive/Thesis/Data`;
+- reusable artifacts: `MyDrive/Thesis/CachedArtifacts/eeg_tokenizer/eegtext`;
+- experiment outputs: `MyDrive/Thesis/Results/eeg_tokenizer/eegtext`.
+
+The existing Task 1 source directory was verified as
+`Data/zuco_og_raw`, and the corrected labels file was verified as
+`Data/zuco_sentiment_labels_task1_fixed.csv`. No dedicated Task 2/NR or Task
+3/TSR directory is currently present. Their reserved destinations are
+`Data/zuco_1_task2_nr` and `Data/zuco_1_task3_tsr`, respectively.
+
+The D0 notebook now derives every data and artifact path from the three root
+variables and prints them at runtime. The user does not need to edit Cell 2.
+This inspection used Drive metadata only; no Drive file was downloaded, moved,
+renamed, or deleted.
