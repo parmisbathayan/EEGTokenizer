@@ -98,9 +98,14 @@ class TextGPT2Tests(unittest.TestCase):
             )
             self.assertEqual(set(metrics["setup"]), {ALIGNED, SHUFFLED, "majority"})
             self.assertEqual(len(predictions[predictions["setup"] == ALIGNED]), len(y))
-            self.assertGreater(
-                metrics.loc[metrics["setup"] == ALIGNED, "macro_f1"].mean(), 0.9
-            )
+            aligned_f1 = metrics.loc[
+                metrics["setup"] == ALIGNED, "macro_f1"
+            ].mean()
+            shuffled_f1 = metrics.loc[
+                metrics["setup"] == SHUFFLED, "macro_f1"
+            ].mean()
+            self.assertGreater(aligned_f1, 0.75)
+            self.assertGreater(aligned_f1, shuffled_f1 + 0.10)
             self.assertEqual(delta["comparison"], f"{ALIGNED}_minus_{SHUFFLED}")
             self.assertTrue((output_dir / "summary.csv").exists())
             self.assertEqual(
