@@ -357,6 +357,16 @@ the previous scattering of text artifacts across the NeuroLM cache root and
 keeps them isolated from V1-V5 EEG artifacts. No scientific configuration,
 model, split, feature, or metric changed.
 
+## 2026-08-03 — Isolate Text V1 Colab tests
+
+The first Text V1 Cell 1 run stopped during repository-wide unittest discovery.
+That gate included unrelated NeuroLM EEG versions and surfaced only a generic
+`CalledProcessError`, so a failure outside the text experiment could block its
+setup without showing a useful report. Cell 1 now discovers only
+`test_text_gpt2.py`, captures and prints the full verbose output, records the
+checked-out project revision, and raises only if a Text V1 test fails. No model,
+data, artifact path, split, feature, classifier, or metric changed.
+
 ## 2026-08-02 — Prepare V5 partial NeuroLM/GPT-2 fine-tuning
 
 The user explicitly authorized one post-screen test of adapting NeuroLM to the
