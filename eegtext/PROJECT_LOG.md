@@ -103,3 +103,41 @@ The D0 notebook now derives every data and artifact path from the three root
 variables and prints them at runtime. The user does not need to edit Cell 2.
 This inspection used Drive metadata only; no Drive file was downloaded, moved,
 renamed, or deleted.
+
+## 2026-08-03 — Complete D0 ZuCo Task 1 audit
+
+The Colab audit completed and saved the Task 1/SR manifest plus a combined
+manifest. Because NR and TSR have not been downloaded yet, the combined
+manifest currently contains SR only.
+
+The source contains 12 subjects with 400 sentence entries each, for 4,800
+reader/sentence recordings and 400 unique sentences. Of these, 4,532 recordings
+are usable (94.42%). This exactly matches the usable recording count in the
+earlier TFM and NeuroLM pipelines. All usable recordings have 105 channels,
+500 Hz sampling, finite values, and a sentiment label. Recording duration ranges
+from 1.006 to 29.638 seconds, with a median of 4.863 seconds.
+
+The audit excluded 268 recordings: 263 have no raw EEG matrix in the source and
+five contain fewer than the locked minimum of 500 samples. Missing trials are
+concentrated in ZDN (107 exclusions) and ZJS (64), which together account for
+171 of the 268 exclusions. Every sentence is still represented by at least
+eight usable subjects: 195 sentences have all 12 subjects, 151 have 11, 46 have
+10, seven have nine, and one has eight.
+
+At the sentence level, the sentiment labels contain 123 negative, 137 neutral,
+and 140 positive sentences. At the usable recording level, the corresponding
+counts are 1,391, 1,560, and 1,581. No duplicate normalized sentence text was
+found within Task 1, and no label was missing.
+
+The official ZuCo 1.0 OSF inventory contains 1,355 files totaling 60.23 GiB,
+but most of that release is not needed for this project. The relevant additional
+raw MATLAB files are exactly 12 NR files totaling 9.64 GiB and 12 TSR files
+totaling 7.80 GiB. Therefore, adding both unlabeled paired tasks requires 24
+files and 17.44 GiB in Drive rather than downloading the complete release.
+
+### D0 decision
+
+Task 1 passes the corpus-integrity gate and is sufficient for the frozen V0
+retrieval baseline. Before the contrastive V1 experiment, download and audit the
+24 identified NR/TSR MATLAB files, then recompute cross-task normalized-text
+groups so duplicated sentence content cannot cross evaluation splits.
