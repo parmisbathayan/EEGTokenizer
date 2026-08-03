@@ -346,6 +346,17 @@ The Colab notebook persists roughly 552 MB of GPT-2 weights and tokenizer files
 plus a roughly 1-2 MB feature cache in Drive. No Mac dependency or model was
 downloaded or installed. Scientific results are pending the Colab run.
 
+## 2026-08-03 — Group the text reference as Text V1
+
+The text-only reference remains inside the NeuroLM project but is now named
+**Text V1** and uses a fully grouped Drive artifact layout. Its model cache and
+sentence features live under
+`CachedArtifacts/eeg_tokenizer/neurolm/text_only_v1/`, while every evaluation
+output lives under `Results/eeg_tokenizer/neurolm/text_only_v1/`. This removes
+the previous scattering of text artifacts across the NeuroLM cache root and
+keeps them isolated from V1-V5 EEG artifacts. No scientific configuration,
+model, split, feature, or metric changed.
+
 ## 2026-08-02 — Prepare V5 partial NeuroLM/GPT-2 fine-tuning
 
 The user explicitly authorized one post-screen test of adapting NeuroLM to the

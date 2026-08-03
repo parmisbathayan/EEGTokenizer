@@ -29,10 +29,12 @@ The upstream sources are:
 | V3 | Factorized frozen NeuroLM channel/time sequence | Small attention probe | [`neurolm_structured_probe_v3_colab.ipynb`](notebooks/neurolm_structured_probe_v3_colab.ipynb) | Complete; red |
 | V4 | Full frozen NeuroLM-B EEG-to-GPT-2 prompt state | Residual adapter + fixed label verbalizers | [`neurolm_gpt2_verbalizer_v4_colab.ipynb`](notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb) | Prepared; pending Colab run |
 | V5 | Same EEG-to-GPT-2 path with final two GPT-2 blocks unfrozen | Residual adapter + fixed label verbalizers | [`neurolm_partial_finetune_v5_colab.ipynb`](notebooks/neurolm_partial_finetune_v5_colab.ipynb) | Prepared; pending Colab run |
+| Text V1 | Frozen standard GPT-2 final sentence state; no EEG | Balanced logistic regression | [`neurolm_text_gpt2_reference_colab.ipynb`](notebooks/neurolm_text_gpt2_reference_colab.ipynb) | Prepared; pending Colab run |
 
-There is also a separate frozen GPT-2 **text-only reference**. It uses each
-stimulus sentence once, no EEG and no reader rows, so it is not V5 and does not
-alter the bounded V1-V4 EEG screen. See
+There is also **Text V1**, a frozen GPT-2 text-only reference inside the NeuroLM
+project. It uses each stimulus sentence once, no EEG and no reader rows. It is a
+sibling of the EEG versions with its own artifact subtree, not an EEG version
+and not part of their stoplight family. See
 [`TEXT_GPT2_BASELINE.md`](TEXT_GPT2_BASELINE.md) and
 [`neurolm_text_gpt2_reference_colab.ipynb`](notebooks/neurolm_text_gpt2_reference_colab.ipynb).
 
@@ -91,7 +93,7 @@ For V4, open
 [`notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb`](notebooks/neurolm_gpt2_verbalizer_v4_colab.ipynb).
 For V5, open
 [`notebooks/neurolm_partial_finetune_v5_colab.ipynb`](notebooks/neurolm_partial_finetune_v5_colab.ipynb).
-For the separate text-only reference, open
+For Text V1, open
 [`notebooks/neurolm_text_gpt2_reference_colab.ipynb`](notebooks/neurolm_text_gpt2_reference_colab.ipynb).
 Select a GPU runtime and run every cell in order. Only the Drive paths in Cell 2
 may need editing. The full locked V2 protocol is documented in
@@ -130,15 +132,16 @@ MyDrive/Thesis/
 │   ├── raw_eeg_packs_v2/<subject>.npz
 │   ├── structured_features_v3/<subject>.npz
 │   ├── gpt2_prompt_features_v4/<subject>.npz
-│   ├── text_gpt2_hf_cache/
-│   └── text_gpt2_features_v1.npz
+│   └── text_only_v1/
+│       ├── hf_model/
+│       └── sentence_features.npz
 └── Results/eeg_tokenizer/neurolm/
     ├── frozen_probe_v1/
     ├── raw_eegnet_v2/
     ├── structured_probe_v3/
     ├── gpt2_verbalizer_v4/
     ├── partial_finetune_v5/
-    └── text_gpt2_reference/
+    └── text_only_v1/
 ```
 
 ## Important boundary

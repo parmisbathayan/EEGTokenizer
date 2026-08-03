@@ -1,8 +1,9 @@
 # Frozen GPT-2 text-only reference
 
 This experiment measures how predictable the three ZuCo sentiment labels are
-from the stimulus sentences alone. It is a reference for interpreting the EEG
-experiments, not a fifth EEG model and not part of the V1-V4 stoplight family.
+from the stimulus sentences alone. It is **Text V1** inside the NeuroLM project:
+a sibling reference for interpreting the EEG versions, not an EEG version and
+not part of their stoplight family.
 
 ## Locked protocol
 
@@ -47,10 +48,10 @@ select a GPU runtime, and run every cell. The notebook reads only the fixed labe
 CSV; the raw EEG files and NeuroLM checkpoint are not needed.
 
 The first run downloads the pinned Hugging Face GPT-2 safetensors weights
-(548 MB) plus roughly 3 MB of tokenizer/config files into Google Drive. The
-cached directory is roughly 552 MB, and the compressed 400-row feature cache is
-about 1-2 MB. Later runs reuse both. Nothing is downloaded or installed on the
-Mac.
+(548 MB) plus roughly 3 MB of tokenizer/config files into the dedicated
+`text_only_v1` Google Drive cache. The model cache is roughly 552 MB, and the
+compressed 400-row feature cache is about 1-2 MB. Later runs reuse both. Nothing
+is downloaded or installed on the Mac.
 
 Expected Drive additions:
 
@@ -58,9 +59,10 @@ Expected Drive additions:
 MyDrive/Thesis/
 ├── Data/zuco_sentiment_labels_task1_fixed.csv
 ├── CachedArtifacts/eeg_tokenizer/neurolm/
-│   ├── text_gpt2_hf_cache/
-│   └── text_gpt2_features_v1.npz
-└── Results/eeg_tokenizer/neurolm/text_gpt2_reference/
+│   └── text_only_v1/
+│       ├── hf_model/
+│       └── sentence_features.npz
+└── Results/eeg_tokenizer/neurolm/text_only_v1/
     ├── fold_metrics.csv
     ├── oof_predictions.csv
     ├── summary.csv
@@ -69,6 +71,7 @@ MyDrive/Thesis/
     └── text_vs_shuffled_bootstrap.json
 ```
 
+All Text V1 artifacts are therefore isolated from V1-V5 EEG caches and results.
 If `extraction_report.json` reports any truncated sentences, do not interpret
 the result until the locked maximum length is reconsidered and the cache is
 rebuilt. ZuCo Task 1 sentences are expected to fit comfortably within 128 GPT-2
