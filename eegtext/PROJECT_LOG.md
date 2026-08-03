@@ -141,3 +141,35 @@ Task 1 passes the corpus-integrity gate and is sufficient for the frozen V0
 retrieval baseline. Before the contrastive V1 experiment, download and audit the
 24 identified NR/TSR MATLAB files, then recompute cross-task normalized-text
 groups so duplicated sentence content cannot cross evaluation splits.
+
+## 2026-08-03 — Prepare full paired-corpus acquisition
+
+The modeling sequence was deliberately paused so the available paired corpus
+can be understood before V0 is designed. Added a separate D1 Colab notebook for
+the 24 missing ZuCo files: 12 NR files totaling 9.64 GiB and 12 TSR files
+totaling 7.80 GiB.
+
+The downloader selects files by their exact official OSF materialized paths and
+requires the locked 12-subject set. It streams directly into the two reserved
+Drive data directories, retains an interrupted file with a `.part` suffix,
+requests the remaining byte range on rerun, and validates the official size
+before atomically promoting the file. An existing final file is reused only
+when its size matches; a wrong-size final file is never overwritten. A JSON
+status report is updated after every completed subject.
+
+The notebook separates NR download, NR audit, TSR download, TSR audit, and final
+combination into distinct cells. This makes each completed stage persistent and
+allows a disconnected runtime to resume without repeating completed work. It
+uses the already-saved D0 inventory and does not repeat the OSF inventory call.
+
+A read-only Drive inspection also confirmed that TECO should not be downloaded
+again. The existing `teco_pickles` collection contains 12 subject folders, each
+with one `task1.pickle`, totaling 20.40 GiB. Derived padded and consolidated TECO
+arrays are also present. The pickles still need an in-place structural and text
+coverage audit in Colab before their unlabeled pairs can be admitted, but no
+duplicate TECO acquisition is justified.
+
+Five download-specific tests cover locked file selection, fresh download,
+existing-file reuse, HTTP range resumption, servers that ignore ranges, and
+wrong-size file protection. The full download-free suite now contains 22 tests.
+No dataset file was downloaded to the Mac while preparing this stage.

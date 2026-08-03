@@ -82,6 +82,10 @@ identify duplicates, quantify coverage, and save a corpus fingerprint. Acceptanc
 requires explainable counts, valid shapes, stable text hashes, and no unresolved
 cross-split duplicate policy.
 
+Status: Task 1 passed with 4,532 usable reader/sentence recordings covering all
+400 unique sentiment sentences. D1 now acquires and audits NR and TSR before any
+representation experiment begins.
+
 ### V0: frozen zero-shot retrieval
 
 Use frozen NeuroLM EEG representations and frozen GPT-2 text representations
@@ -167,9 +171,11 @@ eligible corpus size, but before any V1 result is observed.
 
 ## 10. Milestones
 
-1. Scaffold and download-free data audit.
+1. Scaffold and download-free data audit. **Complete.**
 2. Run OSF inventory in Colab and lock exact downloadable files and sizes.
-3. Download selected files to Drive and complete the corpus audit.
+   **Complete.**
+3. Download selected files to Drive and complete the corpus audit. **Notebook
+   ready; cloud run pending.**
 4. Implement and validate frozen representation caches.
 5. Run V0 zero-shot retrieval.
 6. Lock and run V1 aligned/shuffled contrastive training.

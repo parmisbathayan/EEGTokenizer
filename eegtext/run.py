@@ -5,6 +5,7 @@ import argparse
 import json
 
 from src.config import AuditConfig
+from src.download import download_task, task_plan
 from src.manifest import audit_zuco, combine_manifests
 from src.osf_inventory import inventory_osf
 
@@ -33,6 +34,19 @@ def _combine_command(args):
     return combine_manifests(args.manifest, args.output_dir)
 
 
+def _plan_download_command(args):
+    return task_plan(args.inventory, args.task, args.output_dir)
+
+
+def _download_command(args):
+    return download_task(
+        args.inventory,
+        args.task,
+        args.output_dir,
+        status_file=args.status_file,
+    )
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -43,6 +57,25 @@ def build_parser():
     inventory.add_argument("--node", required=True, help="Public OSF node identifier.")
     inventory.add_argument("--output-dir", required=True)
     inventory.set_defaults(handler=_inventory_command)
+
+    plan_download = commands.add_parser(
+        "plan-zuco-download",
+        description="Select exact official NR or TSR files without downloading them.",
+    )
+    plan_download.add_argument("--inventory", required=True)
+    plan_download.add_argument("--task", choices=("NR", "TSR"), required=True)
+    plan_download.add_argument("--output-dir", required=True)
+    plan_download.set_defaults(handler=_plan_download_command)
+
+    download = commands.add_parser(
+        "download-zuco-task",
+        description="Resumably download and size-validate one official ZuCo task.",
+    )
+    download.add_argument("--inventory", required=True)
+    download.add_argument("--task", choices=("NR", "TSR"), required=True)
+    download.add_argument("--output-dir", required=True)
+    download.add_argument("--status-file")
+    download.set_defaults(handler=_download_command)
 
     audit = commands.add_parser(
         "audit-zuco", description="Audit one directory of ZuCo MATLAB files."
